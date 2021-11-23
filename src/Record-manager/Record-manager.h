@@ -12,30 +12,20 @@
 #include "exception.h"
 
 class RecordManager {
-public:
-    BufferManager &buffer;
-
-    RecordManager(BufferManager &bufferManager) : buffer(bufferManager) {};
-
-    void createTable(char *tablename, TableInfo tbif);
-
-    void deleteTable(char *tablename);
-
-    int insertRecord(char *, Tuple, TableInfo);       //参数：表名，Tuple；向表中插入元组，插入失败则报错
-    void deleteRecord(char *tableName, std::vector<int> no, TableInfo tbif);       //参数：表名，序号
-    void deleteAllRecord(char *tableName, TableInfo tbif);
-
-    std::vector<int> conditionSelect(char *tableName, int attrno, char *op, Attribute attr, TableInfo tbif);
-    //参数：表名，属性序号（用catalog'的getattrNo），算数比较符，比较值, tbif
-
-
-    std::vector<Tuple>
-    nonConditionSelect(char *tableName, TableInfo tbif);                       //参数：表名,存放数组，tableinfo；返回全部tuple
-    std::vector<Tuple> searchTuple(char *tableName, TableInfo tbif, std::vector<int> no);
-
-    bool checkUnique(char *tableName, int attrno, Attribute attr,
-                     TableInfo tbif);                            //参数：attrno由catalog中的checkattrno得到
-    int getPageNum(char *tableName);
+  public:
+       RecordHandler  ();                     // 构造函数
+       ~RecordHandler ();                     // 析构函数
+    int CreateFile     (const char *fileName); // 创建文件
+    int DestroyFile    (const char *fileName); // 删除文件
+    int OpenFile       (const char *fileName); // 通过缓存管理模块打开文件，并获取其句柄
+    int CloseFile      ();                     // 关闭fileID对应文件
+    int GetRecord      (const int &rid, char *&pData);            
+                                              // 通过页号和槽号访问记录后，相应字节序列可以通过pData访问
+    int DeleteRecord   (const int &rid);       // 删除特定记录
+    int InsertRecord   (const int &rid, const char *pData); 
+                                              // 将字节序列pData插入特定位置
+    int UpdateRecord   (const int &rid, const char *pData);
+                                              // 将特定位置记录更新为字节序列pData
 };
 
 #endif // !record_hpp
