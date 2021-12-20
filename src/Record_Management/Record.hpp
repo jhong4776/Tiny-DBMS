@@ -43,6 +43,7 @@ struct TableHead {
 };
 
 class RecordHandler {
+    int fileID, permID;
   public:
        RecordHandler  ();                     // 构造函数
        ~RecordHandler ();                     // 析构函数
