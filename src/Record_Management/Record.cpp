@@ -3,8 +3,8 @@
 #include <string>
 #include <sstream>
 
-#include "../filesystem/fileio/FileManager.h"
-#include "../filesystem/bufmanager/BufPageManager.h"
+#include "../FS-manager/fileio/FileManager.h"
+#include "../FS-manager/bufmanager/BufPageManager.h"
 
 RecordHandler::RecordHandler(){
 

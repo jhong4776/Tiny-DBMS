@@ -44,6 +44,16 @@ public:
 		return b;
 	}
 public:
+
+    static BufPageManager &getInstance() {
+        static BufPageManager instance;
+        return instance;
+    }
+
+    static FileManager &getFileManager() {
+        return *(getInstance().fileManager);
+    }
+
 	/*
 	 * @函数名allocPage
 	 * @参数fileID:文件id，数据库程序在运行时，用文件id来区分正在打开的不同的文件
