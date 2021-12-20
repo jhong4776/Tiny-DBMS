@@ -46,6 +46,7 @@ class RecordHandler {
     TableHead head;
     bool ready;
     int fileID, permID;
+    std::string fileName;
   public:
        RecordHandler  ();                     // 构造函数
        ~RecordHandler ();                     // 析构函数
