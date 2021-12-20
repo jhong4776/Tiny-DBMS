@@ -9,5 +9,6 @@ typedef unsigned char uint8_t
 #define INDEX_DATA_PAGE 0
 #define INDEX_PAGE 1
 #define ROOT_PAGEID 0
+#define MAX_RECORD 1024
 
 #endif
