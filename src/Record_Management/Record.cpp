@@ -2,6 +2,7 @@
 #include <cstring>
 #include <string>
 #include <sstream>
+#include <assert.h>
 
 #include "../FS-manager/fileio/FileManager.h"
 #include "../FS-manager/bufmanager/BufPageManager.h"
