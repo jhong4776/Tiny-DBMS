@@ -1,4 +1,5 @@
 #include "Header_manager.h"
+#include "../Header_define.h"
 
 Header_manager::Header_manager() {}
 
@@ -8,7 +9,7 @@ void Header_manager::read_from_file(const char* filename) {
 
 }
 
-void Header_manager::get_header_info() {
+void Header_manager::input_header_info() {
     Index_Header_info* h_i = (Index_Header_info*)file_input;
     header_info.pageID = h_i->pageID;
     header_info.nextPage = h_i->nextPage;
@@ -42,4 +43,8 @@ void Header_manager::header_initialize(int i_page_ID, int i_nextPage, int i_prev
     header_info.reservedCnt = 0;
     header_info.xactresenved = 0;
     header_info.nullmap = 0;
+}
+
+Index_Header_info Header_manager::get_header_info() {
+    return header_info;
 }

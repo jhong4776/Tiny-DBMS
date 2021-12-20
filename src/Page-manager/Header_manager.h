@@ -14,10 +14,11 @@ public:
     Header_manager();
     ~Header_manager();
     void read_from_file(const char* filename);
-    void get_header_info();
+    void input_header_info();
     void header_initialize(int i_page_ID, int i_nextPage, int i_prevPage, 
                            int i_objID, int i_level, int i_index_ID,
                            int i_pminlen);
+    Index_Header_info get_header_info();
 };
 
 #endif
