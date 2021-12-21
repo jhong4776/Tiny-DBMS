@@ -47,6 +47,12 @@ class RecordHandler {
     bool ready;
     int fileID, permID;
     std::string fileName;
+
+    char *buf;
+    // TODO
+    // index is not implemented
+    Index colIndex[MAX_COLUMN_SIZE]
+
   public:
        RecordHandler  ();                     // 构造函数
        ~RecordHandler ();                     // 析构函数
@@ -66,5 +72,6 @@ class RecordHandler {
                                               // 将特定位置记录更新为字节序列pData
     std::string    setTempRecord(int col, const char *data);
     void  initTempRecord();
+    void setPrimary(int columnID);
 
 };
