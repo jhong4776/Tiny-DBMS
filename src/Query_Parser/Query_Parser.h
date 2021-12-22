@@ -2,8 +2,8 @@
 #define __Query_Parser_H__
 
 #include "Database.h"
-#include "sql_parser/type_def.h"
-#include "sql_parser/Expression.h"
+#include "typedef.h"
+#include "Expression.h"
 
 class Query_Parser {
     enum IDX_TYPE {
