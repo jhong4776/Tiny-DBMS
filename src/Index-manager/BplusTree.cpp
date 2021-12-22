@@ -5,6 +5,7 @@
 #include "../Page-manager/Header_manager.h"
 #include <string.h>
 #include <iostream>
+#include <climits>
 
 struct P_K
 {
@@ -39,6 +40,7 @@ BplusNode::BplusNode(std::list<PKUnit*> pkus1, bool leaf1, int pageID1, int objI
     pageID = pageID1;
     objID = objID1;
     next_page_ID = next_page_ID1;
+    dirty = false;
     std::cout << "BplusNode Created!" << std::endl;
 }
 
@@ -87,6 +89,7 @@ void BplusNode::data_write_back() {
     string str_filename = "Index" + std::to_string(objID) + "_" + std::to_string(pageID);
     const char* filename = str_filename.data();
     f_manager->openFile(filename, file_ID);
+    std::cout << "Data_write_back... filename = " << filename << std::endl;
 
     // 获取缓存块
     BufPageManager *b_manager = new BufPageManager(f_manager);
@@ -102,14 +105,18 @@ void BplusNode::data_write_back() {
     // 将索引页头以及数据写入页中
     memcpy(buf, (uint8_t *)ih, sizeof(Index_Header_info));
     int offset = 0;
+    std::cout << "size = " << pkus.size() << std::endl;
     for (auto it = pkus.begin(); it != pkus.end(); it++) {
         // TODO：是否应当把BufType改为以byte为单位
+        std::cout << "(*it)->record_len " << (*it)->record_len << std::endl;
         memcpy(&buf[sizeof(Index_Header_info) + offset * (*it)->record_len], (*it)->record, (*it)->record_len);
+        offset++;
     }
     b_manager->markDirty(buf_index);
     b_manager->close();
 
     f_manager->closeFile(file_ID);
+    dirty = false;
 }
 
 /**
@@ -146,6 +153,8 @@ void BplusNode::pk_write_back() {
     b_manager->markDirty(buf_index);
     b_manager->close();
     f_manager->closeFile(file_ID);
+
+    dirty = false;
 }
 
 /**
@@ -207,18 +216,16 @@ int BplusNode::spilt_page(int is_leaf_node, int max_page_ID) {
     // 构建新的BplusNode
     BplusNode new_node(new_pkus, is_leaf_node, max_page_ID, objID, next_page_ID);
     // 建立node间的连接关系
-    // Todo：如何在页文件中表示这种连接关系
     next_page_ID = max_page_ID;
+    new_node.father_node = this->father_node;
 
     // 为分裂节点分配新页面并写入
     if (is_leaf_node == LEAF_NODE) {
         new_node.alloc_new_page((*new_pkus.begin())->record_len, LEAF_NODE);
         new_node.data_write_back();
-        data_write_back();
     } else {
         new_node.alloc_new_page(sizeof(P_K), false);
-        new_node.pk_write_back();
-        pk_write_back();        
+        new_node.pk_write_back();     
     }
 
     return (*new_pkus.begin())->k;
@@ -233,13 +240,24 @@ int BplusNode::spilt_page(int is_leaf_node, int max_page_ID) {
  */
 bool BplusNode::insert_PK_Unit(PKUnit* i_pku, int& max_pageID) {
     // 在叶节点中插入数据
-    if (leaf == true) {
+    std::cout << "BplusNode insert PKUnit... len = " << i_pku->record_len << std::endl;
+    bool has_insert = false;
+    if (leaf == LEAF_NODE) {
+        std::cout << "Leaf node : origin size = " << pkus.size() << std::endl;
         for (auto it = pkus.begin(); it != pkus.end(); it++) {
             if (i_pku->k < (*it)->k) {
+                std::cout << "1Insert key = " << i_pku->k << " len = " << i_pku->record_len << std::endl;
                 pkus.insert(it, i_pku);
+                has_insert = true;
                 break;
             }
         }
+        if (has_insert == false) {
+            std::cout << "2Insert key = " << i_pku->k << std::endl;
+            pkus.push_back(i_pku);
+        }
+        dirty = true;
+
         if (sizeof(Index_Header_info) + i_pku->record_len * pkus.size() > PAGE_SIZE >> 2){
             // 页分裂
             int next_key = spilt_page(LEAF_NODE, max_pageID);
@@ -261,7 +279,6 @@ bool BplusNode::insert_PK_Unit(PKUnit* i_pku, int& max_pageID) {
             return true;
         }
         else { // 不需分页，将更改后的页面信息写入页中
-            data_write_back();
             return false;
         }
     }
@@ -274,6 +291,9 @@ bool BplusNode::insert_PK_Unit(PKUnit* i_pku, int& max_pageID) {
             // 通过key值获取子节点的页号
             if (i_pku->k <= (*it)->k) {
                 child_node = get_bplus_node((*it)->p, false);
+                child_nodes.push_back(child_node);
+                child_node->father_node = this;
+
                 iterator = it;
                 break;
             }
@@ -290,22 +310,23 @@ bool BplusNode::insert_PK_Unit(PKUnit* i_pku, int& max_pageID) {
             // 在当前p,k对之后插入新的p,k对，其p值为分裂第二页的页编号，k值为当前p,k对的原k值
             int new_p = next_page_ID;
             int len = i_pku->record_len;
-            PKUnit* new_pku = new PKUnit(new_p, new_key, len);
+            PKUnit* new_pku = new PKUnit(new_p, old_key, len);
             // 在当前PKUnit之后插入新的PKUnit
             iterator++;
             pkus.insert(iterator, new_pku);
+            dirty = true;
         }
 
         // 中间节点分裂
         if (sizeof(Index_Header_info) + 8 * pkus.size() > PAGE_SIZE >> 2) {
-            spilt_page(1, max_pageID);
+            int k = spilt_page(1, max_pageID);
             max_pageID ++;
 
         // 对于根节点分裂还应该建立一个新的根节点
             root = false;  
-            int next_key = 0;
+            int next_key = INT_MAX;
             std::list<PKUnit*> new_pkus;
-            PKUnit* n_pku = new PKUnit(max_pageID, next_key, i_pku->record_len);
+            PKUnit* n_pku = new PKUnit(max_pageID-1, next_key, i_pku->record_len);
             new_pkus.push_back(n_pku);
 
             BplusNode new_node(new_pkus, 0, max_pageID, objID, 0);
@@ -316,7 +337,6 @@ bool BplusNode::insert_PK_Unit(PKUnit* i_pku, int& max_pageID) {
             return true;
         } else {
         // 中间节点不分裂
-            data_write_back();
             return false;
         }
     }
@@ -337,10 +357,13 @@ BplusNode* BplusNode::get_bplus_node(int index, bool root) {
     const char* filename = str_filename.data();
     f_manager->openFile(filename, file_ID);
 
+    std::cout << filename << std::endl;
+
     // 读取文件内容载入到buffer中
     BufPageManager *b_manager = new BufPageManager(f_manager);
     int buf_index = 0;
     BufType buf = b_manager->getPage(file_ID, index, buf_index);
+    std::cout << "get buf" << std::endl;
 
     // 获取索引头
     Index_Header_info* ih = (Index_Header_info*)buf;
@@ -374,8 +397,40 @@ BplusNode* BplusNode::get_bplus_node(int index, bool root) {
     else leaf = false;
     BplusNode* child_node = new BplusNode(child_record, leaf, index, objID, nextPage);
 
+    b_manager->close();
     f_manager->closeFile(file_ID);
     return child_node;
+}
+
+/**
+ * @brief 
+ * 
+ * @param k 主索引值
+ * @param record 返回的记录值（存在uint8_t数组中）
+ * @return true 成功找到记录
+ * @return false 未找到记录
+ */
+bool BplusNode::get_record(int k, uint8_t* record) {
+    if (leaf == LEAF_NODE) {
+        std::cout << "get_record LEAF NODE " << pkus.size() << std::endl;
+        for (auto it = pkus.begin(); it != pkus.end(); it++) {
+            std::cout << (*it)->k << " ";
+            if ((*it)->k == k) {
+                std::cout << "get!" << std::endl;
+                memcpy(record, (*it)->record, (*it)->record_len);
+                return true;
+            }
+        }
+        std::cout << "not found!" << std::endl;
+        return false;
+    } else {
+        for (auto it = pkus.begin(); it != pkus.end(); it++) {
+            if ((*it)->k >= k) {
+                return get_bplus_node((*it)->p, false)->get_record(k, record);
+            }
+        }
+        return false;
+    }
 }
 
 /**
@@ -386,6 +441,10 @@ BplusNode* BplusNode::get_bplus_node(int index, bool root) {
  */
 bool BplusNode::isLeaf() {
     return leaf;
+}
+
+bool BplusNode::isDirty() {
+    return dirty;
 }
 
 /**
@@ -405,19 +464,85 @@ BplusTree::~BplusTree() {
 
 }
 
+/**
+ * @brief 返回B+树的大小
+ * 
+ * @return int 
+ */
 int BplusTree::get_size() {
     return size;
 }
 
-void BplusTree::create_new_tree(int objID) {
+/**
+ * @brief 创建新的B+树
+ * 
+ * @param objID B+树所属的表ID
+ */
+void BplusTree::create_new_tree(int objID, int len) {
     std::list<PKUnit*> root_list;
     root = new BplusNode(root_list, LEAF_NODE, 0, objID, 0);
-    root->alloc_new_page(4, LEAF_NODE);
+    root->alloc_new_page(len, LEAF_NODE);
 }
 
-void BplusTree::get_tree_root(int objID) {
+/**
+ * @brief 获取特定主索引的B+树根
+ * 
+ * @param objID B+树所属的表ID
+ */
+void BplusTree::initial_tree_root(int objID) {
     std::cout << "get_tree_root..." << std::endl;
     std::list<PKUnit*> root_list;
     root = new BplusNode(root_list, false, 0, objID, 0); 
     root = root->get_bplus_node(0, true);  
+}
+
+/**
+ * @brief 将数据转换成PKUnit
+ * 
+ * @param record 数据
+ * @param len 数据大小（以byte为单位）
+ * @return PKUnit* 
+ */
+PKUnit* BplusTree::record_to_PKUnit(uint8_t* record, int len) {
+    std::cout << "Record_to_PKUnit... len = " << len << std::endl;
+    PKUnit* pku = new PKUnit();
+    pku->record_len = len;
+    int* key = (int *)record;
+    pku->k = *key;
+    memcpy(pku->record, record, len);
+
+    return pku;
+}
+
+/**
+ * @brief 将数据插入B+树
+ * 
+ * @param record 
+ * @param len 
+ */
+void BplusTree::insert_record(uint8_t* record, int len) {
+    std::cout << "BplusTree Insert record... len = " << len << std::endl;
+    int max_pageID = 1;
+    root->insert_PK_Unit(record_to_PKUnit(record, len), max_pageID);
+}
+
+bool BplusTree::get_record(int key, uint8_t* record) {
+    return root->get_record(key, record);
+}
+
+void BplusTree::write_back(BplusNode *node) {
+    if (node->isLeaf() == LEAF_NODE && node->isDirty() == true) {
+        node->data_write_back();
+        
+    } else {
+        for (auto it = node->child_nodes.begin(); it != node->child_nodes.end(); it++) {
+            write_back(*it);
+        }
+        if (node->isDirty() == true)
+            node->pk_write_back();
+    }
+}
+
+BplusNode* BplusTree::get_root() {
+    return root;
 }

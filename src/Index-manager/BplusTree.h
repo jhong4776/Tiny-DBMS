@@ -28,6 +28,7 @@ class BplusNode{
     std::list<PKUnit* > pkus;
     bool leaf;
     bool root;
+    bool dirty;
     int pageID;
     int objID;
 
@@ -49,23 +50,36 @@ public:
 
     bool insert_PK_Unit(PKUnit* i_pku, int& max_pageID);
     bool delete_PK_Unit(PKUnit* d_pku, int& max_pageID);
+    bool get_record(int k, uint8_t* record);
 
     bool isLeaf();
+    bool isDirty();
     BplusNode* get_bplus_node(int index, bool root);
     int get_size();
     // void get_node_info(int fileID, int pageID);
+
+    std::list<BplusNode* > child_nodes;
+    BplusNode* father_node;
 };
 
 class BplusTree {
     BplusNode* root;
     int size;
     int max_pageID;
+    std::list<int> dirty_page;
 public:
     BplusTree();
     ~BplusTree();
     int get_size();
-    void create_new_tree(int objID);
-    void get_tree_root(int objID);
+    void write_back(BplusNode* node);
+    void create_new_tree(int objID, int len);
+    void initial_tree_root(int objID);
+
+    PKUnit* record_to_PKUnit(uint8_t* record, int len);
+
+    void insert_record(uint8_t* record, int len);
+    bool get_record(int key, uint8_t* record);
+    BplusNode* get_root();
 };
 
 #endif
