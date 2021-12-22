@@ -43,7 +43,7 @@
  */
 #define MAX_TB_NUM 31
 #define RELEASE 1
-typedef unsigned int* BufType;
+typedef unsigned char* BufType;
 typedef unsigned int uint;
 typedef unsigned short ushort;
 typedef unsigned char uchar;
@@ -52,6 +52,5 @@ typedef long long ll;
 typedef double db;
 typedef int INT;
 typedef int(cf)(uchar*, uchar*);
-int current = 0;
-int tt = 0;
+
 #endif

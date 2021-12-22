@@ -30,7 +30,7 @@ void Header_manager::input_header_info() {
 void Header_manager::header_initialize(int i_page_ID, int i_nextPage, int i_prevPage, 
     int i_objID, int i_level, int i_index_ID, int i_pminlen) {
     header_info.pageID = i_page_ID;
-    header_info.next_page = i_nextPage;
+    header_info.nextPage = i_nextPage;
     header_info.prevPage = i_prevPage;
     header_info.objID = i_objID;
     header_info.lsn = 0;

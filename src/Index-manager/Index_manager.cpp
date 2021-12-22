@@ -1,7 +1,7 @@
 #include "Index_manager.h"
 #include "../Page-manager/Header_manager.h"
 #include "../FS-manager/fileio/FileManager.h"
-#include "../bufmanager/BufPageManager.h"
+#include "../FS-manager/bufmanager/BufPageManager.h"
 #include <string.h>
 
 IndexHandler::IndexHandler() {}
@@ -28,12 +28,14 @@ RC IndexHandler::CreateIndex(const char *filename) {
     // 1. 新建管理整个页式结构的页面记录相关属性，如下一个pageID应该是多少
     // 2. 获得该索引所属的数据表的ID
     h_manager.header_initialize(ROOT_PAGEID, 0, 0, 0, LEAF_NODE, INDEX_DATA_PAGE, 0);
-    memcpy(buf, (uint8_t *)(&h_manager.get_header_info()), sizeof(Index_Header_info));
+    Index_Header_info header = h_manager.get_header_info();
+    memcpy(buf, (uint8_t *)(&header), sizeof(Index_Header_info));
     b_manager->markDirty(buf_index);
     b_manager->close();
 
     f_manager->closeFile(file_ID);
 
     // TODO: 弄清楚返回的RC是什么
+    return 0;
 }
 

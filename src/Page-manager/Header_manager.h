@@ -4,8 +4,8 @@
 #ifndef HM
 #define HM
 
-#include "../Data_define.h"
 #include "../Header_define.h"
+#include <stdint.h>
 
 class Header_manager {
     uint8_t file_input[PAGE_SIZE >> 2];

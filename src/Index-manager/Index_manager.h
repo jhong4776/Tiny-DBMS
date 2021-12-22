@@ -1,4 +1,4 @@
-#include "Index_define.h"
+typedef int RC;
 
 class IndexScan {
     public:

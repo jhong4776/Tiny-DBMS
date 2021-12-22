@@ -1,10 +1,8 @@
 #ifndef BPLUSTREE
 #define BPLUSTREE
 
-#include <vector>
 #include <list>
-#include "../bufmanager/BufPageManager.h"
-#include "../Data_define.h"
+#include <stdint.h>
 
 /**
  * @brief p,k键值对,若节点为叶节点则需记录数据
@@ -14,16 +12,16 @@ class PKUnit{
 public:
     int p; // 页号索引
     int k;   // key值
-    uint8_t record[MAX_RECORD];
+    uint8_t record[1024];
     int record_len;
 
-    PKUnit(){}
+    PKUnit(){};
     PKUnit(int p1, int k1, int record_len1){
         p = p1;
         k = k1;
         record_len = record_len1;
-    }
-    ~PKUnit(){}
+    };
+    ~PKUnit(){};
 };
 
 class BplusNode{
@@ -34,9 +32,10 @@ class BplusNode{
     int objID;
 
     int next_page_ID;
+    int height;
 public:
     BplusNode();
-    BplusNode(std::list<PKUnit*> pkus1, bool leaf1, int pageID1, int objID1);
+    BplusNode(std::list<PKUnit*> pkus1, bool leaf1, int pageID1, int objID1, int next_page_id1);
     ~BplusNode();
 
     int size_to_mask(int size);
@@ -44,7 +43,7 @@ public:
     
     void data_write_back();
     void pk_write_back();
-    void alloc_new_page(int page_size);
+    void alloc_new_page(int page_size, bool leafNode);
 
     int spilt_page(int is_leaf_node, int max_page_ID);
 
@@ -52,13 +51,9 @@ public:
     bool delete_PK_Unit(PKUnit* d_pku, int& max_pageID);
 
     bool isLeaf();
-    BplusNode* get_bplus_node(int index);
+    BplusNode* get_bplus_node(int index, bool root);
     int get_size();
-    void get_node_info(int fileID, int pageID);
-
-    BplusNode* father;
-    BplusNode* left;
-    BplusNode* right;
+    // void get_node_info(int fileID, int pageID);
 };
 
 class BplusTree {
@@ -69,7 +64,8 @@ public:
     BplusTree();
     ~BplusTree();
     int get_size();
-
+    void create_new_tree(int objID);
+    void get_tree_root(int objID);
 };
 
 #endif

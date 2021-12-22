@@ -7,6 +7,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include "../utils/pagedef.h"
+#include "../utils/MyBitMap.h"
+
 //#include "../MyLinkList.h"
 using namespace std;
 class FileManager {
@@ -16,7 +19,8 @@ private:
 	MyBitMap* fm;
 	MyBitMap* tm;
 	int _createFile(const char* name) {
-		FILE* f = fopen(name, "a+");
+		cout << "Create file " << name << "..." << endl;
+		FILE* f = fopen(name, "w");
 		if (f == NULL) {
 			cout << "fail" << endl;
 			return -1;
