@@ -36,6 +36,7 @@ int RecordHandler::CreateFile(const char *fileName){
         col.clear();
     }
 }
+
 int RecordHandler::DestroyFile(const char *fileName){
     assert(ready == 1);
     dropIndex();
@@ -44,6 +45,7 @@ int RecordHandler::DestroyFile(const char *fileName){
     BufPageManager::getFileManager().closeFile(fileID);
     ready = false;
 }
+
 int RecordHandler::OpenFile(const char *fileName){
     assert(ready == 0);
     this->fileName = std::string(fileName);
@@ -59,6 +61,7 @@ int RecordHandler::OpenFile(const char *fileName){
     }
     loadIndex();
 }
+
 int RecordHandler::CloseFile(){
     assert(ready);
     storeIndex();
@@ -74,6 +77,7 @@ int RecordHandler::CloseFile(){
         buf = 0;
     }
 }
+
 int RecordHandler::GetRecord(const int &rid, char *&pData){
     int pageID = rid / PAGE_SIZE;
     int offset = rid % PAGE_SIZE;
@@ -83,6 +87,7 @@ int RecordHandler::GetRecord(const int &rid, char *&pData){
     assert(getFooter(page, offset / head.recordByte));
     return page + offset;
 }
+
 int RecordHandler::DeleteRecord(const int &rid){
     int pageID = rid / PAGE_SIZE;
     int offset = rid % PAGE_SIZE;
@@ -164,6 +169,12 @@ int RecordHandler::UpdateRecord(const int &rid, const char *pData){
     BufPageManager::getInstance().markDirty(index);
     insertColIndex(rid, col);
     return "";
+}
+
+void RecordHandler::setPrimary(int columnID){
+    assert((head.notNull >> columnID) & 1);
+    head.isPrimary |= (1 << columnID);
+    ++head.primaryCount;
 }
 
 void RecordHandler::initTempRecord() {
