@@ -1,5 +1,6 @@
 #include <iostream>
 #include "Index-manager/BplusTree.h"
+#include "Header_define.h"
 #include <unistd.h>
 #include <string.h>
 
@@ -12,8 +13,8 @@ struct Record{
 
 BplusTree tree1;
 
-void initial() {
-    tree1.create_new_tree(1, sizeof(Record));
+void initial(int objID) {
+    tree1.create_new_tree(objID, sizeof(Record));
 }
 
 void insert_record(int key, string n) {
@@ -31,7 +32,6 @@ void insert_record(int key, string n) {
 }
 
 void get_record(int k) {
-
     uint8_t buf2[1024];
     bool get_record = tree1.get_record(k, buf2);
     if (get_record == false) {
@@ -42,23 +42,22 @@ void get_record(int k) {
     }  
 }
 
-void initial_root() {
-    tree1.initial_tree_root(1);
+void initial_root(int objID) {
+    tree1.initial_tree_root(objID);
     cout << endl;  
 }
 
 int main() {
-    // initial();
-    initial_root();
+    initial(2);
+    // initial_root(2);
+
+    // tree1.root_debug(); 
     
-    // insert_record(2, "caster\n");
-    // insert_record(4, "archer\n");
-    // insert_record(3, "saber\n");
-    // insert_record(6, "berserker\n");
-    // insert_record(7, "lancer\n");
-    // tree1.write_back(tree1.get_root());
-    
-    for (int i = 0; i <= 7; i++) {
-        get_record(i);
+    for (int i = 1; i <= 50; i++) {
+        string now = "name" + to_string(i);
+        insert_record(i, now);
     }
+    tree1.write_back();
+    
+    get_record(15);
 }

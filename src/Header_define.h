@@ -1,8 +1,8 @@
 #ifndef HD
 #define HD
 
-#define PAGE_SIZE 8192
-#define LEAF_NODE 0
+#define LEAF_NODE 1
+#define NOT_LEAF_NODE 0
 #define INDEX_DATA_PAGE 0
 #define INDEX_PAGE 1
 #define ROOT_PAGEID 0

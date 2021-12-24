@@ -3,6 +3,9 @@
 
 #include <list>
 #include <stdint.h>
+#include <iostream>
+#include <map>
+#include "../FS-manager/bufmanager/BufPageManager.h"
 
 /**
  * @brief p,k键值对,若节点为叶节点则需记录数据
@@ -10,10 +13,10 @@
  */
 class PKUnit{ 
 public:
-    int p; // 页号索引
-    int k;   // key值
+    int p = 0; // 页号索引
+    int k = 0;   // key值
     uint8_t record[1024];
-    int record_len;
+    int record_len = 0;
 
     PKUnit(){};
     PKUnit(int p1, int k1, int record_len1){
@@ -25,7 +28,6 @@ public:
 };
 
 class BplusNode{
-    std::list<PKUnit* > pkus;
     bool leaf;
     bool root;
     bool dirty;
@@ -34,27 +36,30 @@ class BplusNode{
 
     int next_page_ID;
     int height;
+    std::map<int, BplusNode*> child_map; 
 public:
+    std::list<PKUnit> pkus;
     BplusNode();
-    BplusNode(std::list<PKUnit*> pkus1, bool leaf1, int pageID1, int objID1, int next_page_id1);
+    void node_initial(std::list<PKUnit> pkus1, bool leaf1, int pageID1, int objID1, int next_page_id1);
     ~BplusNode();
 
     int size_to_mask(int size);
     int mask_to_size(int mask);
     
-    void data_write_back();
-    void pk_write_back();
-    void alloc_new_page(int page_size, bool leafNode);
+    void data_write_back(BufPageManager* b_manager, int fileID);
+    void pk_write_back(BufPageManager* b_manager, int fileID);
+    void alloc_new_page(int page_size, bool leafNode, BufPageManager* b_manager, int fileID);
 
-    int spilt_page(int is_leaf_node, int max_page_ID);
+    int spilt_page(int is_leaf_node, int max_page_ID, BufPageManager* b_manager, int fileID);
 
-    bool insert_PK_Unit(PKUnit* i_pku, int& max_pageID);
-    bool delete_PK_Unit(PKUnit* d_pku, int& max_pageID);
-    bool get_record(int k, uint8_t* record);
+    bool insert_PK_Unit(PKUnit i_pku, int& max_pageID, BufPageManager* b_manager, int fileID);
+    bool delete_PK_Unit(PKUnit d_pku, int& max_pageID);
+    bool get_record(int k, uint8_t* record, BufPageManager* b_manager, int fileID);
 
     bool isLeaf();
     bool isDirty();
-    BplusNode* get_bplus_node(int index, bool root);
+    void setRoot(bool isroot);
+    BplusNode* get_bplus_node(int index, BufPageManager* b_manager, int fileID);
     int get_size();
     // void get_node_info(int fileID, int pageID);
 
@@ -67,11 +72,15 @@ class BplusTree {
     int size;
     int max_pageID;
     std::list<int> dirty_page;
+
+    FileManager* f_manager;
+    BufPageManager* b_manager;
+    int fileID;
 public:
     BplusTree();
     ~BplusTree();
     int get_size();
-    void write_back(BplusNode* node);
+    void write_back();
     void create_new_tree(int objID, int len);
     void initial_tree_root(int objID);
 
@@ -80,6 +89,8 @@ public:
     void insert_record(uint8_t* record, int len);
     bool get_record(int key, uint8_t* record);
     BplusNode* get_root();
+
+    void root_debug();
 };
 
 #endif

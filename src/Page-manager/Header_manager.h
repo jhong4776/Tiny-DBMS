@@ -5,6 +5,7 @@
 #define HM
 
 #include "../Header_define.h"
+#include "../FS-manager/utils/pagedef.h"
 #include <stdint.h>
 
 class Header_manager {

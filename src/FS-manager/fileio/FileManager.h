@@ -20,7 +20,7 @@ private:
 	MyBitMap* tm;
 	int _createFile(const char* name) {
 		cout << "Create file " << name << "..." << endl;
-		FILE* f = fopen(name, "w");
+		FILE* f = fopen(name, "w+");
 		if (f == NULL) {
 			cout << "fail" << endl;
 			return -1;
