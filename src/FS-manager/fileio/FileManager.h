@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include "../utils/pagedef.h"
 #include "../utils/MyBitMap.h"
+#include <list>
 
 //#include "../MyLinkList.h"
 using namespace std;
@@ -84,7 +85,7 @@ public:
 			return -1;
 		}
 		BufType b = buf + off;
-		error = read(f, (void*) b, PAGE_SIZE);
+		error = read(f, (void*) b, PAGE_SIZE >> 2);
 		return 0;
 	}
 	/*

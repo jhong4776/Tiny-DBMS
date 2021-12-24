@@ -14,16 +14,18 @@ struct Record{
 BplusTree tree1;
 
 void initial(int objID) {
-    tree1.create_new_tree(objID, sizeof(Record));
+    int p_offset = 0;
+    tree1.create_new_tree(objID, sizeof(Record), p_offset);
 }
 
 void insert_record(int key, string n) {
+    cout << "insert : key = " << key << std::endl;
     Record record;
     record.key = key;
     for(int i = 0; i < 20; i++)
         record.name[i] = 0;
 
-    n.copy(record.name, 6, 0);
+    n.copy(record.name, 7, 0);
 
     uint8_t buf[1024];
     memcpy(buf, (uint8_t *)&record, sizeof(Record));
@@ -33,6 +35,7 @@ void insert_record(int key, string n) {
 
 void get_record(int k) {
     uint8_t buf2[1024];
+    std::cout << "get record k = " << k << std::endl;
     bool get_record = tree1.get_record(k, buf2);
     if (get_record == false) {
         cout << "doesn't have the record!" << endl;
@@ -43,21 +46,20 @@ void get_record(int k) {
 }
 
 void initial_root(int objID) {
-    tree1.initial_tree_root(objID);
+    int p_offset = 0;
+    tree1.initial_tree_root(objID, p_offset);
     cout << endl;  
 }
 
 int main() {
     initial(2);
-    // initial_root(2);
-
-    // tree1.root_debug(); 
     
-    for (int i = 1; i <= 50; i++) {
+    for (int i = 1; i <= 102; i++) {
         string now = "name" + to_string(i);
         insert_record(i, now);
     }
     tree1.write_back();
     
-    get_record(15);
+    // initial_root(2);
+    // get_record(101);
 }
