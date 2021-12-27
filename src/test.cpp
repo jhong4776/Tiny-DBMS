@@ -11,14 +11,13 @@ struct Record{
     char name[20];
 };
 
-BplusTree tree1;
 
-void initial(int objID) {
+void initial(int objID, BplusTree& tree1) {
     int p_offset = 0;
     tree1.create_new_tree(objID, sizeof(Record), p_offset);
 }
 
-void insert_record(int key, string n) {
+void insert_record(int key, string n, BplusTree& tree1) {
     cout << "insert : key = " << key << std::endl;
     Record record;
     record.key = key;
@@ -33,7 +32,7 @@ void insert_record(int key, string n) {
     cout << "after insert record" << endl;
 }
 
-void get_record(int k) {
+void get_record(int k, BplusTree& tree1) {
     uint8_t buf2[1024];
     std::cout << "get record k = " << k << std::endl;
     bool get_record = tree1.get_record(k, buf2);
@@ -45,21 +44,25 @@ void get_record(int k) {
     }  
 }
 
-void initial_root(int objID) {
+void initial_root(int objID, BplusTree& tree1) {
     int p_offset = 0;
     tree1.initial_tree_root(objID, p_offset);
     cout << endl;  
 }
 
 int main() {
-    initial(2);
+    BplusTree tree1;
+    initial(2, tree1);
     
-    for (int i = 1; i <= 102; i++) {
+    for (int i = 1; i <= 124; i++) {
         string now = "name" + to_string(i);
-        insert_record(i, now);
+        insert_record(i, now, tree1);
     }
-    tree1.write_back();
+    tree1.write_back(); 
+    std::cout << "end" << std::endl;
+
+    tree1.root_debug();
     
-    // initial_root(2);
-    // get_record(101);
+    // initial_root(2, tree1); 
+    // get_record(101, tree1);
 }

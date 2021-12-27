@@ -16,7 +16,7 @@ public:
     int p = 0; // 页号索引
     int k = 0;   // key值
     int index = 0;
-    uint8_t record[1024];
+    uint8_t record[256];
     int record_len = 0;
 
     PKUnit(){};
@@ -77,7 +77,7 @@ class BplusTree {
     int fileID;
     int p_offset;
 
-    PKUnit pku_block[1000];
+    PKUnit pku_block[2048];
 public:
     BplusTree();
     ~BplusTree();

@@ -26,7 +26,7 @@ $(BUILD_DIR)/%.o: %.cpp Makefile | $(BUILD_DIR)
 
 #执行生成可执行文件
 $(BUILD_DIR)/$(TARGET).exe: $(OBJECTS) Makefile
-	$(CC) $(OBJECTS) $(Lib_INCLUDES) $(CFLAGS) -o $@
+	$(CC) $(OBJECTS) $(Lib_INCLUDES) $(CFLAGS) -o $@ -g
 
 #创建目录
 $(BUILD_DIR):

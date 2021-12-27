@@ -294,7 +294,13 @@ bool BplusNode::insert_PK_Unit(PKUnit i_pku, int& max_pageID, BufPageManager* b_
             if (i_pku.k <= pku_block[(*it)].k) {
                 std::cout << "0leaf = " << leaf << std::endl;
                 std::cout << "pku_block[(*it)].k = " << pku_block[(*it)].k << " pku_block[(*it)].p = " << pku_block[(*it)].p << std::endl;
-                child_node = get_bplus_node(pku_block[(*it)].p, b_manager, fileID, p_offset, pku_block);
+                auto map_it = child_map.find(pku_block[(*it)].p);
+                if (map_it != child_map.end())
+                    child_node = map_it->second;
+                else{
+                    child_node = get_bplus_node(pku_block[(*it)].p, b_manager, fileID, p_offset, pku_block);
+                    child_map.insert(map<int, BplusNode*>::value_type(pku_block[(*it)].p, child_node));
+                }
                 std::cout << "1leaf = " << leaf << std::endl;
                 iterator = it;
                 break;
@@ -389,17 +395,19 @@ BplusNode* BplusNode::get_bplus_node(int index, BufPageManager* b_manager, int f
         pku_block[p_offset].index = p_offset;
         if (level == LEAF_NODE) {
             // 读取叶节点的数据存入pku的record数组中
+            std::cout << "i = " << i << " p_offset = " << p_offset << std::endl;
             memcpy(pku_block[p_offset].record, (uint8_t *)&buf[sizeof(Index_Header_info) + len*i], len);
             pku_block[p_offset].k = (*(int *)&buf[sizeof(Index_Header_info) + len*i]);
             pku_block[p_offset].record_len = len;
-            child_record.push_back(p_offset++);
+            child_record.push_back(p_offset++); 
         } else {
+            std::cout << "i = " << i << " p_offset = " << p_offset << std::endl;
             P_K* child_pk = (P_K *)&buf[sizeof(Index_Header_info) + sizeof(P_K)*i];
             pku_block[p_offset].p = child_pk->p;
-            pku_block[p_offset].k = child_pk->k;
+            pku_block[p_offset].k = child_pk->k; 
             pku_block[p_offset].record_len = sizeof(P_K);
-            child_record.push_back(p_offset++);
-        }
+            child_record.push_back(p_offset++); 
+        } 
     }
 
     BplusNode* child_node = &bn_block[b_offset++]; 
@@ -486,7 +494,12 @@ BplusTree::BplusTree() {
 }
 
 BplusTree::~BplusTree() {
-
+    std::cout << "1\n";
+    b_manager->~BufPageManager();
+    std::cout << "2\n";
+    f_manager->closeFile(fileID);
+    std::cout << "3\n";
+    f_manager->~FileManager();
 }
 
 /**
@@ -508,11 +521,12 @@ void BplusTree::create_new_tree(int objID, int len, int& p_offset) {
     root = &bn_block[b_offset++];
     root->node_initial(root_list, LEAF_NODE, 0, objID, 0);
 
-    FileManager *f_manager = new FileManager();
+    f_manager = new FileManager();
     string str_filename = "Index" + std::to_string(objID);
     const char* filename = str_filename.data();
     f_manager->createFile(filename);
 
+    std::cout << "open\n";
     f_manager->openFile(filename, fileID);
 
     b_manager = new BufPageManager(f_manager);
@@ -532,7 +546,7 @@ void BplusTree::initial_tree_root(int objID, int& p_offset) {
     root = &bn_block[b_offset++]; 
     root->node_initial(root_list, LEAF_NODE, 0, objID, 0);
 
-    FileManager *f_manager = new FileManager();
+    f_manager = new FileManager();
     string str_filename = "Index" + std::to_string(objID);
     const char* filename = str_filename.data();
     f_manager->openFile(filename, fileID);
@@ -555,10 +569,10 @@ void BplusTree::insert_record(uint8_t* record, int len) {
     pku_block[p_offset].index = p_offset;
     pku_block[p_offset].record_len = len;
     pku_block[p_offset].p = 0;
-    int* key = (int *)record;
-    pku_block[p_offset].k = *key;
+    int* key = (int *)record;  
+    pku_block[p_offset].k = *key; 
     memcpy(pku_block[p_offset].record, record, len);
-
+ 
     root->insert_PK_Unit(pku_block[p_offset++], max_pageID, b_manager, fileID, p_offset, pku_block);
 }
 
@@ -568,7 +582,7 @@ bool BplusTree::get_record(int key, uint8_t* record) {
         std::cout << "null" <<std::endl;
     return root->get_record(key, record, b_manager, fileID, p_offset, pku_block);
 }
-
+ 
 void BplusTree::write_back() {
     b_manager->close();
 }
@@ -578,8 +592,12 @@ BplusNode* BplusTree::get_root() {
 }
 
 void BplusTree::root_debug() {
-    for (int i = 0; i < p_offset; i++) {
-        std::cout << "(" << pku_block[i].k << "," << pku_block[i].p << "," << pku_block[i].record_len << ") ";
-    }
-    std::cout << std::endl;
+    // for (int i = 0; i < p_offset; i++) {
+    //     std::cout << "(" << pku_block[i].k << "," << pku_block[i].p << "," << pku_block[i].record_len << ") ";
+    // }
+    // std::cout << std::endl;
+
+    std::cout << "debug\n";
+    f_manager->closeFile(fileID);
+    std::cout << "close\n";
 }
