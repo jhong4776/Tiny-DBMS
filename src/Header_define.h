@@ -1,12 +1,16 @@
 #ifndef HD
 #define HD
 
+#include <string>
+
 #define LEAF_NODE 1
 #define NOT_LEAF_NODE 0
 #define INDEX_DATA_PAGE 0
 #define INDEX_PAGE 1
 #define ROOT_PAGEID 0
 #define MAX_RECORD 1024
+
+// extern std::string pro_types[5] = {"int", "char", "float", "double", "bool"};
 
 struct Index_Header_info
 {
@@ -25,5 +29,33 @@ struct Index_Header_info
     int xactresenved; // 由最近启动的事务预留的字节数
     int nullmap; // 位图(0表示该行为空) #TODO：nullmap暂定为32位（一页最多放32条数据）
 }; 
+
+struct Property {
+    char name[20];
+    int len;
+    int type;
+    bool be_null;
+    bool prikey;
+    bool forkey;
+};
+
+struct PriKey {
+    char name[20];
+    int fortable; // 联合的外键所在表编号
+    char forname[20]; // 外键列名
+};
+
+struct ForKey {
+    char name[20];
+    int pretable; // 联合的主键所在表编号
+    char prename[20]; // 主键列名
+};
+
+struct Table_Header
+{
+    int pro_num; // 属性个数
+    int prikey_num; // 主键个数
+    int forkey_num; // 外键个数
+};
 
 #endif

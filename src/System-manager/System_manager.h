@@ -7,6 +7,7 @@
 #include <string>
 #include "../FS-manager/fileio/FileManager.h"
 #include "../FS-manager/bufmanager/BufPageManager.h"
+#include "../Header_define.h"
 
 struct DBHeader{
     int size;
@@ -33,17 +34,28 @@ private:
 
     int database_num;
     bool update;
+protected:
+    bool insert_foreign_key(std::string forname, int forpage, std::string priname, int pripage);
+    bool drop_foreign_key(std::string forname, int forpage, std::string priname, int pripage);
+    bool record_dup();
 public:
     System_manager();
     ~System_manager();
     void create_database(std::string name);
     void drop_database(std::string name);
     void use_database(std::string name);
-    void create_table(std::string name);
+    void create_table(std::string name, Table_Header table_header, std::list<Property> property, std::list<PriKey> prikey, std::list<ForKey> forkey);
     void drop_table(std::string name);
     void rename_table(std::string oldname, std::string newname);
     std::list<std::string>* show_table();
     std::list<std::string>* show_database();
+    void table_schema(std::string table_name);
+    int get_table_ID(int fID, std::string table_name);
+    std::string get_table_name(int fID, int pageID);
+    void add_prikey(std::string table_name, std::string prikey);
+    void drop_prikey(std::string table_name, std::string prikey);
+    void add_foreignkey(std::string table_name, std::string forkey, std::string r_table, std::string prikey);
+    void drop_foreignkey(std::string table_name, std::string forkey, std::string r_table, std::string prikey);
 };
 
 

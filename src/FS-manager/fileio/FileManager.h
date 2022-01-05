@@ -88,7 +88,7 @@ public:
 			return -1;
 		}
 		BufType b = buf + off;
-		error = read(f, (void*) b, PAGE_SIZE >> 2);
+		error = read(f, (void*) b, PAGE_SIZE);
 		return 0;
 	}
 	/*

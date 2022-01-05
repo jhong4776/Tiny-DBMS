@@ -29,7 +29,6 @@ protected:
 	int data[128];
 public:
 	MyBitMap() {
-		cout << "cr" << endl;
 		for(int i = 0; i < 128; i++) {
 			data[i] = 0;
 		}
