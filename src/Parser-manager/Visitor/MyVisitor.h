@@ -3,10 +3,35 @@
 #include "SQLBaseVisitor.h"
 #include "SQLLexer.h"
 #include "SQLParser.h"
+#include <string>
+#include <vector>
+
+struct DataList {
+  std::string name; // 变量名
+  std::string type; // 变量类型
+  int len; // 长度
+  std::string str_val; // 字符值
+  int int_val; //整型值
+  bool bool_val; // 布尔值
+  float float_val; // 小数值
+
+  bool pri_key; // 是否是主键
+  bool for_key; //是否是外键
+};
 
 class MyVisitor : public SQLBaseVisitor{
-    public:
-    int visit(SQLParser::ProgramContext* iTree);
+  std::string command; // create drop show use load dump describe insert delete update select alter
+  std::string object; // database table index
+  std::string name; // name of database, table, variable
+  std::string type; // integer string float null
+  std::string relation; // > < >= <= != ==
+  std::string aggregator; // count average max min sum
+  std::string filename;
+
+  std::vector<DataList> data_list;
+  public:
+  int visit(SQLParser::ProgramContext* iTree);
+  
   virtual antlrcpp::Any visitProgram(SQLParser::ProgramContext *ctx);
 
   virtual antlrcpp::Any visitStatement(SQLParser::StatementContext *ctx);

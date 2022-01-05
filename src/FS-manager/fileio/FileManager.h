@@ -18,7 +18,8 @@ private:
 	//FileTable* ftable;
 	int fd[MAX_FILE_NUM];
 	MyBitMap* fm;
-	MyBitMap* tm;
+	// MyBitMap* tm;
+	int fileID_now = 0;
 	int _createFile(const char* name) {
 		cout << "Create file " << name << "..." << endl;
 		FILE* f = fopen(name, "w+");
@@ -42,8 +43,8 @@ public:
 	 * FilManager构造函数
 	 */
 	FileManager() {
-		fm = new MyBitMap(MAX_FILE_NUM, 1);
-		tm = new MyBitMap(MAX_TYPE_NUM, 1);
+		fm = new MyBitMap();
+		// tm = new MyBitMap();
 	}
 	/*
 	 * @函数名writePage
@@ -56,10 +57,12 @@ public:
 	 */
 	int writePage(int fileID, int pageID, BufType buf, int off) {
 		int f = fd[fileID];
+		std::cout << "fileID = " << fileID << " pageID = " << pageID << " f = " << f << std::endl;
 		off_t offset = pageID;
 		offset = (offset << PAGE_SIZE_IDX);
 		off_t error = lseek(f, offset, SEEK_SET);
 		if (error != offset) {
+			std::cout << "error" << std::endl;
 			return -1;
 		}
 		BufType b = buf + off;
@@ -95,7 +98,7 @@ public:
 	 * 返回:操作成功，返回0
 	 */
 	int closeFile(int fileID) {
-		fm->setBit(fileID, 1);
+		fm->releaseBit(fileID);
 		int f = fd[fileID];
 		close(f);
 		return 0;
@@ -118,21 +121,25 @@ public:
 	 * 返回:如果成功打开，在fileID中存储为该文件分配的id，返回true，否则返回false
 	 */
 	bool openFile(const char* name, int& fileID) {
-		fileID = fm->findLeftOne();
-		fm->setBit(fileID, 0);
-		_openFile(name, fileID);
+		fileID = fm->getNewID();
+		std::cout << "name = " << name << " fileID = " << fileID << std::endl;
+		fm->setBit(fileID);
+		int open_suc = _openFile(name, fileID);
+		if (open_suc == -1) {
+			return false;
+		}
 		return true;
 	}
-	int newType() {
-		int t = tm->findLeftOne();
-		tm->setBit(t, 0);
-		return t;
-	}
-	void closeType(int typeID) {
-		tm->setBit(typeID, 1);
-	}
+	// int newType() {
+	// 	int t = tm->findLeftOne();
+	// 	tm->setBit(t, 0);
+	// 	return t;
+	// }
+	// void closeType(int typeID) {
+	// 	tm->setBit(typeID, 1);
+	// }
 	void shutdown() {
-		delete tm;
+		// delete tm;
 		delete fm;
 	}
 	~FileManager() {

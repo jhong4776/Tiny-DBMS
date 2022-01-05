@@ -64,7 +64,6 @@ public:
 	 */
 	void replace(int index, int k1, int k2) {
 		int h = hash(k1, k2);
-		//cout << h << endl;
 		list->insertFirst(h, index);
 		a[index].key1 = k1;
 		a[index].key2 = k2;
