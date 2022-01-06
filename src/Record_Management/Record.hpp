@@ -1,4 +1,4 @@
-#include<stdint.h>
+#include <stdint.h>
 
 #define MAX_COLUMN_SIZE 32
 // both table name and column name
@@ -51,7 +51,7 @@ class RecordHandler {
     char *buf;
     // TODO
     // index is not implemented
-    Index colIndex[MAX_COLUMN_SIZE]
+    Index colIndex[MAX_COLUMN_SIZE];
 
   public:
        RecordHandler  ();                     // 构造函数

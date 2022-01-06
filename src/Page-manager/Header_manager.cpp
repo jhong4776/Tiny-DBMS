@@ -24,7 +24,6 @@ void Header_manager::input_header_info() {
     header_info.freeCnt = h_i->freeCnt;
     header_info.reservedCnt = h_i->reservedCnt; 
     header_info.xactresenved = h_i->xactresenved;
-    header_info.nullmap = h_i->nullmap;   
 }
 
 void Header_manager::header_initialize(int i_page_ID, int i_nextPage, int i_prevPage, 
@@ -42,7 +41,6 @@ void Header_manager::header_initialize(int i_page_ID, int i_nextPage, int i_prev
     header_info.freeCnt = PAGE_SIZE - sizeof(Index_Header_info);
     header_info.reservedCnt = 0;
     header_info.xactresenved = 0;
-    header_info.nullmap = 0;
 }
 
 Index_Header_info Header_manager::get_header_info() {

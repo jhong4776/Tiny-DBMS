@@ -57,7 +57,6 @@ public:
 	 */
 	int writePage(int fileID, int pageID, BufType buf, int off) {
 		int f = fd[fileID];
-		std::cout << "fileID = " << fileID << " pageID = " << pageID << " f = " << f << std::endl;
 		off_t offset = pageID;
 		offset = (offset << PAGE_SIZE_IDX);
 		off_t error = lseek(f, offset, SEEK_SET);
