@@ -56,6 +56,7 @@ struct Table_Header
     int pro_num; // 属性个数
     int prikey_num; // 主键个数
     int forkey_num; // 外键个数
+    int max_priIndex;  // 索引最大值（自动计数）
 };
 
 #endif

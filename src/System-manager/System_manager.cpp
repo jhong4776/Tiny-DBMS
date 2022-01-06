@@ -797,3 +797,31 @@ void System_manager::drop_foreignkey(std::string table_name, std::string forkey,
     b_manager->writeBack(new_bufID);
     f_manager->closeFile(new_fileID);
 }
+
+void System_manager::update_Index(int tableID) {
+    int b_ID = 0;
+    int fID = 0;
+    f_manager->openFile(database_now.data(), fID);
+    BufType t_buf = b_manager->getPage(fID, tableID, b_ID);
+    Table_Header * t_h = (Table_Header *)t_buf;
+    t_h->max_priIndex++;
+    b_manager->markDirty(b_ID);
+    b_manager->writeBack(b_ID);
+    f_manager->closeFile(fID);
+}
+
+int System_manager::get_Index(int tableID) {
+    int b_ID = 0;
+    int fID = 0;
+    f_manager->openFile(database_now.data(), fID);
+    BufType t_buf = b_manager->getPage(fID, tableID, b_ID);
+    Table_Header * t_h = (Table_Header *)t_buf;
+    int index_value = t_h->max_priIndex;
+    b_manager->release(b_ID);
+    f_manager->closeFile(fID);
+    return index_value;
+}
+
+std::string System_manager::get_database_now() {
+    return database_now;
+}

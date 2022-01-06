@@ -46,13 +46,16 @@ ForKey create_for(string name, int pretable, string prename) {
 
 int main() {
     System_manager s_m;
-    // s_m.create_database("akina11");
-    s_m.use_database("akina11");
+    s_m.create_database("akina12");
+    s_m.use_database("akina12");
 
     // s_m.show_table();
-    s_m.table_schema("test2");
+    // s_m.table_schema("test2");
 
     // s_m.add_foreignkey("test2", "name", "test1", "id");
+
+    // s_m.update_Index(s_m.get_table_ID(-1, "test1"));
+    cout << s_m.get_Index(s_m.get_table_ID(-1, "test1")) << endl;
 
     // Table_Header t_h; 
     // t_h.pro_num = 2;

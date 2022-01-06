@@ -81,8 +81,8 @@ public:
     ~BplusTree();
     int get_size();
     void write_back();
-    void create_new_tree(int objID);
-    void initial_tree_root(int objID);
+    void create_new_tree(int objID, std::string database, std::string index_name);
+    void initial_tree_root(int objID, std::string database, std::string index_name);
 
     void insert_record(int k, int record);
     void delete_record(int k);

@@ -8,7 +8,8 @@ C_SOURCES = \
 test.cpp \
 BplusTree.cpp \
 Index_manager.cpp \
-../Page-manager/Header_manager.cpp
+../Page-manager/Header_manager.cpp \
+../System-manager/System_manager.cpp
 
 #链接所需库
 CFLAGS = $(C_INCLUDES) -std=c++17

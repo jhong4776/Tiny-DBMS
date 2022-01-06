@@ -13,17 +13,20 @@ IndexHandler::~IndexHandler() {}
  * root
  * @param filename 新建根索引页的文件名
 */
-RC IndexHandler::CreateIndex(const char *filename) {
-    btree.create_new_tree(2);
+RC IndexHandler::CreateIndex(string database_name, string table_name, string Index_name) {
+    System_manager s_m;
+    s_m.use_database(database_name);
+    btree.create_new_tree(s_m.get_table_ID(-1, table_name), database_name, Index_name);
     return 0;
 }
 
-RC IndexHandler::DestroyIndex(const char *filename) {
+RC IndexHandler::DestroyIndex(string database_name, string table_name, string Index_name) {
     return 0;
 }
 
-RC IndexHandler::OpenIndex(const char *filename) {
-    btree.initial_tree_root(2);
+RC IndexHandler::OpenIndex(string database_name, string table_name, string Index_name) {
+    System_manager s_m;
+    btree.initial_tree_root(s_m.get_table_ID(-1, table_name), database_name, Index_name);
     return 0;
 }
 

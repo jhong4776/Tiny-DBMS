@@ -473,13 +473,13 @@ int BplusTree::get_size() {
  * 
  * @param objID B+树所属的表ID
  */
-void BplusTree::create_new_tree(int objID) {
+void BplusTree::create_new_tree(int objID, std::string database, std::string index_name) {
     std::list<PKUnit> root_list;
     root = &bn_block[b_offset++];
     root->node_initial(root_list, LEAF_NODE, 0, objID, 0);
 
     f_manager = new FileManager();
-    string str_filename = "Index" + std::to_string(objID);
+    string str_filename = "Index_" + database + "_" + std::to_string(objID) + "_" + index_name;
     const char* filename = str_filename.data();
     f_manager->createFile(filename);
 
@@ -497,14 +497,14 @@ void BplusTree::create_new_tree(int objID) {
  * 
  * @param objID B+树所属的表ID
  */
-void BplusTree::initial_tree_root(int objID) {
+void BplusTree::initial_tree_root(int objID, std::string database, std::string index_name) {
     std::cout << "get_tree_root..." << std::endl;
     std::list<PKUnit> root_list;
     root = &bn_block[b_offset++]; 
     root->node_initial(root_list, LEAF_NODE, 0, objID, 0);
 
     f_manager = new FileManager();
-    string str_filename = "Index" + std::to_string(objID);
+    string str_filename = "Index_" + database + "_" + std::to_string(objID) + "_" + index_name;
     const char* filename = str_filename.data();
     f_manager->openFile(filename, fileID);
 
