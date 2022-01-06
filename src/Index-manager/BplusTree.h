@@ -49,7 +49,7 @@ public:
     int spilt_page(int is_leaf_node, int max_page_ID, BufPageManager* b_manager, int fileID);
 
     int insert_PK_Unit(PKUnit i_pku, int& max_pageID, BufPageManager* b_manager, int fileID);
-    bool delete_PK_Unit(PKUnit d_pku, int& max_pageID);
+    bool delete_PK_Unit(PKUnit d_pku, int& max_pageID, BufPageManager* b_manager, int fileID);
     int get_record(int k, BufPageManager* b_manager, int fileID);
 
     bool isLeaf();
@@ -85,6 +85,7 @@ public:
     void initial_tree_root(int objID);
 
     void insert_record(int k, int record);
+    void delete_record(int k);
     int get_record(int key);
     BplusNode* get_root();
 

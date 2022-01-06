@@ -309,6 +309,36 @@ int BplusNode::insert_PK_Unit(PKUnit i_pku, int& max_pageID, BufPageManager* b_m
     }
 }
 
+bool BplusNode::delete_PK_Unit(PKUnit d_pku, int& max_pageID, BufPageManager* b_manager, int fileID) {
+    std::cout << "BplusNode delete PKUnit... k = " << d_pku.k << std::endl;
+    bool has_delete = false;
+    if (leaf == LEAF_NODE) {
+        for (auto it = pkus.begin(); it != pkus.end(); it++) {
+            if (d_pku.k == (*it).k) {
+                pkus.erase(it);
+                data_write_back(b_manager, fileID);
+                return true;
+            }
+        }
+        return false;
+    } else {
+        BplusNode* child_node;
+        for (auto it = pkus.begin(); it != pkus.end(); it++) {
+            if (d_pku.k <= (*it).k) {
+                auto map_it = child_map.find((*it).p);
+                if (map_it != child_map.end())
+                    child_node = map_it->second;
+                else {
+                    child_node = get_bplus_node((*it).p, b_manager, fileID);
+                    child_map.insert(map<int, BplusNode*>::value_type((*it).p, child_node));
+                }
+                return child_node->insert_PK_Unit(d_pku, max_pageID, b_manager, fileID);
+            }
+        }
+        return false;
+    }
+}
+
 /**
  * @brief 读取子节点页，将子节点页的信息加载到ChlidNode中
  * 
@@ -497,6 +527,11 @@ void BplusTree::insert_record(int k, int record) {
     n_pku.record = record;
  
     root->insert_PK_Unit(n_pku, max_pageID, b_manager, fileID);
+}
+
+void BplusTree::delete_record(int k) {
+    PKUnit n_pku(0, k);
+    root->delete_PK_Unit(n_pku, max_pageID, b_manager, fileID);
 }
 
 int BplusTree::get_record(int key) {

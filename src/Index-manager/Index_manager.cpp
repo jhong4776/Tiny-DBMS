@@ -14,28 +14,50 @@ IndexHandler::~IndexHandler() {}
  * @param filename 新建根索引页的文件名
 */
 RC IndexHandler::CreateIndex(const char *filename) {
-    FileManager *f_manager = new FileManager();
-    int file_ID = 0;
-    f_manager->createFile(filename);
-    f_manager->openFile(filename, file_ID);
-
-    BufPageManager *b_manager = new BufPageManager(f_manager);
-    int buf_index = 0;
-    BufType buf = b_manager->allocPage(file_ID, ROOT_PAGEID, buf_index);
-
-    Header_manager h_manager;
-    // TODO: 补完该处的缺省属性初始值:
-    // 1. 新建管理整个页式结构的页面记录相关属性，如下一个pageID应该是多少
-    // 2. 获得该索引所属的数据表的ID
-    h_manager.header_initialize(ROOT_PAGEID, 0, 0, 0, LEAF_NODE, INDEX_DATA_PAGE, 0);
-    Index_Header_info header = h_manager.get_header_info();
-    memcpy(buf, (uint8_t *)(&header), sizeof(Index_Header_info));
-    b_manager->markDirty(buf_index);
-    b_manager->close();
-
-    f_manager->closeFile(file_ID);
-
-    // TODO: 弄清楚返回的RC是什么
+    btree.create_new_tree(2);
     return 0;
 }
 
+RC IndexHandler::DestroyIndex(const char *filename) {
+    return 0;
+}
+
+RC IndexHandler::OpenIndex(const char *filename) {
+    btree.initial_tree_root(2);
+    return 0;
+}
+
+RC IndexHandler::CloseIndex() {
+    return 0;
+}
+
+RC IndexHandler::Seainth(int lowerBound, int upperBound) {
+    for (int i = lowerBound; i < upperBound; i++) {
+       int rid = btree.get_record(i);
+       if (rid != -1)
+           return rid;
+    }
+    return -1;
+}
+
+RC IndexHandler::DeleteRecord(int lowerBound, int upperBound) {
+    for (int i = lowerBound; i < upperBound; i++) {
+        btree.delete_record(i);
+    }
+    return 0;
+}
+
+RC IndexHandler::InsertRecoder(int key, const int &rid) {
+    btree.insert_record(key, rid);
+    return 0;
+}
+
+RC IndexHandler::UpdateRecoder(int oldKey, const int &oldint, int newKey, const int & newint) {
+    btree.delete_record(oldKey);
+    btree.insert_record(newKey, newint);
+    return 0;
+}
+
+void IndexHandler::WriteBack() {
+    btree.write_back();
+}
