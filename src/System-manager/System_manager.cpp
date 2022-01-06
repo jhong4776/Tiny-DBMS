@@ -61,7 +61,7 @@ void System_manager::create_database(std::string name) {
         if((*it) == name) {
             error = true;
             std::cout << "Can't create database " << name << " database exists" << std::endl;
-            break;
+            return;
         }
     }
     if (error == false) {
@@ -133,7 +133,7 @@ void System_manager::create_table(std::string name, Table_Header table_header, s
     // 解析数据库文件头
     DBHeader* new_header = (DBHeader*)table_buf;
     int table_num = new_header->size;
-    std::cout << "len = " << new_header->size << " newID = " << new_header->newID << "bufID = " << bufID_now << std::endl;
+    std::cout << "len = " << new_header->size << " newID = " << new_header->newID << " bufID = " << bufID_now << std::endl;
 
     std::list<std::string> all_table;
     for (int i = 0; i < table_num; i++) {
@@ -332,7 +332,7 @@ void System_manager::table_schema(std::string table_name) {
     BufType table_buf = b_manager->getPage(new_fileID, pageID, bufID_now);   
     std::cout << "pageID = " << pageID << std::endl; 
     if (pageID == -1) {
-        std::cout << "Error table" << table_name << " doesn't exit" << std::endl;
+        std::cout << "Error : table " << table_name << " doesn't exit" << std::endl;
         return;
     }
     // 解析表头
@@ -353,14 +353,14 @@ void System_manager::table_schema(std::string table_name) {
         std::cout << "name = " << pri_name;
         if (pri->fortable != -1) {
             std::string for_name = pri->forname;
-            std::cout << "table_name = " << get_table_name(new_fileID, pri->fortable) << " forname = " << for_name;
+            std::cout << " table_name = " << get_table_name(new_fileID, pri->fortable) << " forname = " << for_name;
         }
         std::cout << endl;
     }
     // 打印外键信息
     std::cout << "Foreign keys: " << std::endl;
     for (int i = 0; i < t_h->forkey_num; i++) {
-        ForKey* foreign = (ForKey *)&table_buf[sizeof(Table_Header) + t_h->pro_num * sizeof(Property) + t_h->pro_num * sizeof(PriKey) + i * sizeof(ForKey)];
+        ForKey* foreign = (ForKey *)&table_buf[sizeof(Table_Header) + t_h->pro_num * sizeof(Property) + t_h->prikey_num * sizeof(PriKey) + i * sizeof(ForKey)];
         std::string for_name = foreign->name;
         std::string pri_name = foreign->prename;
         std::cout << "name = " << for_name << "table_name = " << get_table_name(new_fileID, foreign->pretable) << " priname = " << pri_name << std::endl;
@@ -440,7 +440,7 @@ bool System_manager::insert_foreign_key(std::string forname, int forpage, std::s
                 pri_update.name[i] = 0;
             }
             forname.copy(pri_update.forname, 20, 0); pri_update.fortable = forpage; priname.copy(pri_update.name, 20, 0);
-            memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property)  * pri_table_h->pro_num + sizeof(PriKey) + i], &pri_update, sizeof(PriKey));
+            memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property)  * pri_table_h->pro_num + sizeof(PriKey) * i], &pri_update, sizeof(PriKey));
             b_manager->markDirty(bufID_now);
             b_manager->writeBack(bufID_now);
             return true;
@@ -484,7 +484,7 @@ void System_manager::add_prikey(std::string table_name, std::string prikey) {
     f_manager->openFile(database_now.data(), new_fileID);
     int pageID = get_table_ID(new_fileID, table_name);
     if (pageID == -1) {
-        std::cout << "Error : table " << table_name << "doesn't exit!" << std::endl;
+        std::cout << "Error : table " << table_name << " doesn't exit!" << std::endl;
         f_manager->closeFile(new_fileID);
         return;
     }
@@ -493,6 +493,8 @@ void System_manager::add_prikey(std::string table_name, std::string prikey) {
     // 解析表头
     Table_Header* t_h = (Table_Header *)table_buf;
     Table_Header new_table_header;
+    int old_prikey_num = t_h->prikey_num;
+
     new_table_header.pro_num = t_h->pro_num; 
     new_table_header.prikey_num = t_h->prikey_num + 1; 
     new_table_header.forkey_num = t_h->forkey_num;
@@ -500,7 +502,7 @@ void System_manager::add_prikey(std::string table_name, std::string prikey) {
 
     // 查看对应列是否存在
     bool exist = false;
-    for (int i = 0; i < t_h->forkey_num; i++) {
+    for (int i = 0; i < t_h->pro_num; i++) {
         Property* pro = (Property *)&table_buf[sizeof(Table_Header) + sizeof(Property) * i];
         string ori_name = pro->name;
         if (ori_name == prikey) {
@@ -517,7 +519,7 @@ void System_manager::add_prikey(std::string table_name, std::string prikey) {
         }
     }
     if (exist == false) {
-        std::cout << "Error : " << prikey << "doesn't in table!" << std::endl;
+        std::cout << "Error : " << prikey << " doesn't in table!" << std::endl;
         b_manager->release(new_bufID);
         f_manager->closeFile(new_fileID);
         return;
@@ -526,7 +528,7 @@ void System_manager::add_prikey(std::string table_name, std::string prikey) {
     // 获取原主键和外键
     std::list<PriKey> pri_list;
     std::list<ForKey> for_list;
-    for (int i = 0; i < t_h->prikey_num; i++) {
+    for (int i = 0; i < old_prikey_num; i++) {
         PriKey* pri = (PriKey *)&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * i];
         pri_list.push_back(*pri);
     }
@@ -536,11 +538,11 @@ void System_manager::add_prikey(std::string table_name, std::string prikey) {
     }   
     PriKey new_pri_key;
     for (int i = 0; i < 20; i++) {
-        new_pri_key.name[0] = 0;
-        new_pri_key.forname[0] = 0;
+        new_pri_key.name[i] = 0;
+        new_pri_key.forname[i] = 0;
     }
     prikey.copy(new_pri_key.name, 20, 0);
-    new_pri_key. fortable = -1;
+    new_pri_key.fortable = -1;
     pri_list.push_back(new_pri_key);
 
     // 将主键和外键信息重新写入页中
@@ -566,7 +568,7 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
     f_manager->openFile(database_now.data(), new_fileID);
     int pageID = get_table_ID(new_fileID, table_name);
     if (pageID == -1) {
-        std::cout << "Error : table " << table_name << "doesn't exit!" << std::endl;
+        std::cout << "Error : table " << table_name << " doesn't exit!" << std::endl;
         f_manager->closeFile(new_fileID);
         return;
     }
@@ -575,6 +577,8 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
     // 解析表头
     Table_Header* t_h = (Table_Header *)table_buf;
     Table_Header new_table_header;
+    int old_prikey_num = t_h->prikey_num;
+
     new_table_header.pro_num = t_h->pro_num; 
     new_table_header.prikey_num = t_h->prikey_num - 1; 
     new_table_header.forkey_num = t_h->forkey_num;
@@ -582,9 +586,10 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
 
     // 查看对应主键是否存在于元素中
     bool exist = false;
-    for (int i = 0; i < t_h->forkey_num; i++) {
+    for (int i = 0; i < t_h->pro_num; i++) {
         Property* pro = (Property *)&table_buf[sizeof(Table_Header) + sizeof(Property) * i];
         string ori_name = pro->name;
+        std::cout << "oriname = " << ori_name << " pro_name = " << pro->name << std::endl;
         if (ori_name == prikey) {
             if (pro->prikey == false) {
                 std::cout << ori_name << " is not a primary key!" << std::endl;
@@ -599,7 +604,7 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
         }
     }
     if (exist == false) {
-        std::cout << "Error : " << prikey << "doesn't in table!" << std::endl;
+        std::cout << "Error : " << prikey << " doesn't in table!" << std::endl;
         b_manager->release(new_bufID);
         f_manager->closeFile(new_fileID);
         return;
@@ -608,9 +613,11 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
     // 获取原主键和外键
     std::list<PriKey> pri_list;
     std::list<ForKey> for_list;
-    for (int i = 0; i < t_h->prikey_num; i++) {
+    std::cout << "PRIKEY_NUM = " << old_prikey_num << std::endl;
+    for (int i = 0; i < old_prikey_num; i++) {
         PriKey* pri = (PriKey *)&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * i];
         string ori_name = pri->name;
+        std::cout << "ORI_NAME = " << ori_name << " PRI_NAME = " << pri->name << " PRI->FORTABLE = " << pri->fortable << std::endl;
         if (prikey == ori_name) {
             if (pri->fortable != -1) {
                 std::cout << "Error : constraint by foreign key" << std::endl;
@@ -650,22 +657,16 @@ void System_manager::add_foreignkey(std::string table_name, std::string forkey, 
     f_manager->openFile(database_now.data(), new_fileID);
     int pageID = get_table_ID(new_fileID, table_name);
     if (pageID == -1) {
-        std::cout << "Error : table " << table_name << "doesn't exit!" << std::endl;
+        std::cout << "Error : table " << table_name << " doesn't exit!" << std::endl;
         f_manager->closeFile(new_fileID);
         return;
     }
 
     int pripage = get_table_ID(new_fileID, r_table);
     if (pripage == - 1) {
-        std::cout << "Error : Reference table " << r_table << "doesn't exit!" << std::endl;
+        std::cout << "Error : Reference table " << r_table << " doesn't exit!" << std::endl;
         f_manager->closeFile(new_fileID);
         return;        
-    }
-    bool insert_suc = insert_foreign_key(forkey, pageID, prikey, pripage);
-    if (insert_suc == false) {
-        std::cout << "Error : Reference key " << prikey << "doesn't exit!" << std::endl;
-        f_manager->closeFile(new_fileID);
-        return;           
     }
     BufType table_buf = b_manager->getPage(new_fileID, pageID, new_bufID);    
     Table_Header* t_h = (Table_Header *)table_buf;
@@ -677,10 +678,10 @@ void System_manager::add_foreignkey(std::string table_name, std::string forkey, 
 
     // 查看对应列是否存在
     bool exist = false;
-    for (int i = 0; i < t_h->forkey_num; i++) {
+    for (int i = 0; i < t_h->pro_num; i++) {
         Property* pro = (Property *)&table_buf[sizeof(Table_Header) + sizeof(Property) * i];
         string ori_name = pro->name;
-        if (ori_name == prikey) {
+        if (ori_name == forkey) {
             if (pro->forkey == true) {
                 std::cout << ori_name << " has been formary key!" << std::endl;
                 b_manager->release(new_bufID);
@@ -694,15 +695,25 @@ void System_manager::add_foreignkey(std::string table_name, std::string forkey, 
         }
     }
     if (exist == false) {
-        std::cout << "Error : " << forkey << "doesn't in table!" << std::endl;
+        std::cout << "Error : " << forkey << " doesn't in table!" << std::endl;
         b_manager->release(new_bufID);
         f_manager->closeFile(new_fileID);
         return;
     } 
+    bool insert_suc = insert_foreign_key(forkey, pageID, prikey, pripage);
+    if (insert_suc == false) {
+        std::cout << "Error : Reference key " << prikey << " doesn't exit!" << std::endl;
+        f_manager->closeFile(new_fileID);
+        return;           
+    }
     // 直接添加外键
     ForKey new_forkey;
+    for (int i = 0; i < 20; i++) {
+        new_forkey.name[i] = 0;
+        new_forkey.prename[i] = 0;
+    }
     forkey.copy(new_forkey.name, 20, 0); new_forkey.pretable = pripage; prikey.copy(new_forkey.prename, 20, 0);
-    memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * t_h->forkey_num],
+    memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * (t_h->forkey_num - 1)],
             &new_forkey, sizeof(ForKey));
 
     b_manager->markDirty(new_bufID);
@@ -727,26 +738,22 @@ void System_manager::drop_foreignkey(std::string table_name, std::string forkey,
         f_manager->closeFile(new_fileID);
         return;        
     }
-    bool insert_suc = drop_foreign_key(forkey, pageID, prikey, pripage);
-    if (insert_suc == false) {
-        std::cout << "Error : Reference key " << prikey << "doesn't exit!" << std::endl;
-        f_manager->closeFile(new_fileID);
-        return;           
-    }
     BufType table_buf = b_manager->getPage(new_fileID, pageID, new_bufID);    
     Table_Header* t_h = (Table_Header *)table_buf;
     Table_Header new_table_header;
+    int old_forkey_num =  t_h->forkey_num;
+
     new_table_header.pro_num = t_h->pro_num; 
     new_table_header.prikey_num = t_h->prikey_num; 
-    new_table_header.forkey_num = t_h->forkey_num + 1;
+    new_table_header.forkey_num = t_h->forkey_num - 1;
     memcpy(table_buf, &new_table_header, sizeof(Table_Header));    
 
     // 查看对应列是否存在
     bool exist = false;
-    for (int i = 0; i < t_h->forkey_num; i++) {
+    for (int i = 0; i < t_h->pro_num; i++) {
         Property* pro = (Property *)&table_buf[sizeof(Table_Header) + sizeof(Property) * i];
         string ori_name = pro->name;
-        if (ori_name == prikey) {
+        if (ori_name == forkey) {
             if (pro->forkey == false) {
                 std::cout << ori_name << " isn't foreign key!" << std::endl;
                 b_manager->release(new_bufID);
@@ -765,9 +772,15 @@ void System_manager::drop_foreignkey(std::string table_name, std::string forkey,
         f_manager->closeFile(new_fileID);
         return;
     } 
+    bool insert_suc = drop_foreign_key(forkey, pageID, prikey, pripage);
+    if (insert_suc == false) {
+        std::cout << "Error : Reference key " << prikey << "doesn't exit!" << std::endl;
+        f_manager->closeFile(new_fileID);
+        return;           
+    }
     // 直接删除外键
     std::list<ForKey> for_list;
-    for (int i = 0; i < t_h->forkey_num; i++) {
+    for (int i = 0; i < old_forkey_num; i++) {
         ForKey* forkey = (ForKey *)&table_buf[sizeof(Table_Header) + sizeof(Property)  * t_h->pro_num + sizeof(PriKey) + i];
         string ori_name = forkey->name;
         if (prikey != ori_name) {
