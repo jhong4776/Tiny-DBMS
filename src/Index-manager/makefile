@@ -3,6 +3,10 @@ TARGET = main
 
 BUILD_DIR = bin
 
+INDEX_MANAGER=./Index-manager/
+SYSTEM_MANAGER=./system-manager/
+PAGE_MANAGER=./page-manager/
+
 #源文件列表
 C_SOURCES = \
 test.cpp \

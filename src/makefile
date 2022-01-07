@@ -3,12 +3,16 @@ TARGET = main
 
 BUILD_DIR = bin
 
+INDEX_MANAGER=./Index-manager/
+SYSTEM_MANAGER=./system-manager/
+PAGE_MANAGER=./page-manager/
+
 #源文件列表
 C_SOURCES = \
 test.cpp \
-Index-manager/BplusTree.cpp \
-Index_manager.cpp \
-Page-manager/Header_manager.cpp
+$(wildcard ./*cpp $(INDEX_MANAGER)*.cpp) \
+$(wildcard ./*cpp $(SYSTEM_MANAGER)*.cpp) \
+$(wildcard ./*cpp $(PAGE_MANAGER)*.cpp) 
 
 #链接所需库
 CFLAGS = $(C_INCLUDES) -std=c++17
