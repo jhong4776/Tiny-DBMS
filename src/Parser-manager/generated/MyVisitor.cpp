@@ -168,7 +168,7 @@ antlrcpp::Any MyVisitor::visitAlter_table_drop_foreign_key(SQLParser::Alter_tabl
     s_m.use_database(db_now);
 
     cout << ctx->Identifier()[0]->getText() << " " << ctx->Identifier()[1]->getText() << endl;
-    s_m.drop_foreignkey(ctx->Identifier()[0]->getText(), ctx->Identifier()[1]->getText(), "", "");
+    s_m.drop_foreignkey(ctx->Identifier()[0]->getText(), ctx->Identifier()[1]->getText());
     return visitChildren(ctx);
 }
 

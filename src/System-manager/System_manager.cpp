@@ -699,7 +699,7 @@ void System_manager::add_foreignkey(std::string table_name, std::string forkey, 
     f_manager->closeFile(new_fileID);
 }
 
-void System_manager::drop_foreignkey(std::string table_name, std::string forkey, std::string r_table, std::string prikey) {
+void System_manager::drop_foreignkey(std::string table_name, std::string forkey) {
     int new_fileID = 0;
     int new_bufID = 0;
     f_manager->openFile(database_now.data(), new_fileID);
@@ -710,12 +710,6 @@ void System_manager::drop_foreignkey(std::string table_name, std::string forkey,
         return;
     }
 
-    int pripage = get_table_ID(new_fileID, r_table);
-    if (pripage == - 1) {
-        std::cout << "Error : Reference table " << r_table << "doesn't exit!" << std::endl;
-        f_manager->closeFile(new_fileID);
-        return;        
-    }
     BufType table_buf = b_manager->getPage(new_fileID, pageID, new_bufID);    
     Table_Header* t_h = (Table_Header *)table_buf;
     Table_Header new_table_header;
@@ -750,19 +744,22 @@ void System_manager::drop_foreignkey(std::string table_name, std::string forkey,
         f_manager->closeFile(new_fileID);
         return;
     } 
-    bool insert_suc = drop_foreign_key(forkey, pageID, prikey, pripage);
-    if (insert_suc == false) {
-        std::cout << "Error : Reference key " << prikey << "doesn't exit!" << std::endl;
-        f_manager->closeFile(new_fileID);
-        return;           
-    }
     // 直接删除外键
     std::list<ForKey> for_list;
     for (int i = 0; i < old_forkey_num; i++) {
-        ForKey* forkey = (ForKey *)&table_buf[sizeof(Table_Header) + sizeof(Property)  * t_h->pro_num + sizeof(PriKey) + i];
-        string ori_name = forkey->name;
-        if (prikey != ori_name) {
-            for_list.push_back(*forkey);
+        ForKey* foreignkey = (ForKey *)&table_buf[sizeof(Table_Header) + sizeof(Property)  * t_h->pro_num + sizeof(PriKey) + i];
+        string ori_name = foreignkey->name;
+        if (forkey != ori_name) {
+            for_list.push_back(*foreignkey);
+        } else {
+            string prikey = (*foreignkey).prename;
+            int pripage = (*foreignkey).pretable;
+            bool drop_suc = drop_foreign_key(forkey, pageID, prikey, pripage);
+            if (drop_suc == false) {
+                std::cout << "Error : Reference key " << prikey << "doesn't exit!" << std::endl;
+                f_manager->closeFile(new_fileID);
+                return;           
+            }
         }
     }    
     int off = 0;

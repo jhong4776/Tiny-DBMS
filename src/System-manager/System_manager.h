@@ -55,7 +55,7 @@ public:
     void add_prikey(std::string table_name, std::string prikey);
     void drop_prikey(std::string table_name, std::string prikey);
     void add_foreignkey(std::string table_name, std::string forkey, std::string r_table, std::string prikey);
-    void drop_foreignkey(std::string table_name, std::string forkey, std::string r_table, std::string prikey);
+    void drop_foreignkey(std::string table_name, std::string forkey);
     void update_Index(int tableID);
     int get_Index(int tableID);
     std::string get_database_now();
