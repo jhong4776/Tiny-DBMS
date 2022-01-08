@@ -514,7 +514,8 @@ void System_manager::add_prikey(std::string table_name, std::string prikey) {
         pri_list.push_back(*pri);
     }
     for (int i = 0; i < t_h->forkey_num; i++) {
-        ForKey* forkey = (ForKey *)&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * i];
+        ForKey* forkey = (ForKey *)&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * old_prikey_num + sizeof(ForKey) * i];
+        string f_n = forkey->name;
         for_list.push_back(*forkey);
     }   
     PriKey new_pri_key;
@@ -528,15 +529,16 @@ void System_manager::add_prikey(std::string table_name, std::string prikey) {
 
     // 将主键和外键信息重新写入页中
     int off = 0;
+    for (auto it = for_list.begin(); it != for_list.end(); it++) {
+        string f_n = (*it).name;
+        memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * new_table_header.prikey_num + sizeof(ForKey) * off], &(*it), sizeof(ForKey));
+        off ++;
+    }   
+    off = 0; 
     for (auto it = pri_list.begin(); it != pri_list.end(); it++) {
         memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * off], &(*it), sizeof(PriKey));
         off ++;
     }
-    off = 0;
-    for (auto it = for_list.begin(); it != for_list.end(); it++) {
-        memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * off], &(*it), sizeof(ForKey));
-        off ++;
-    }    
     b_manager->markDirty(new_bufID);
     b_manager->writeBack(new_bufID);
 
@@ -608,21 +610,21 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
         }
     }
     for (int i = 0; i < t_h->forkey_num; i++) {
-        ForKey* forkey = (ForKey *)&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * i];
+        ForKey* forkey = (ForKey *)&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * old_prikey_num + sizeof(ForKey) * i];
         for_list.push_back(*forkey);
     }
 
     // 将主键和外键信息重新写入页中
     int off = 0;
-    for (auto it = pri_list.begin(); it != pri_list.end(); it++) {
-        memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * off], &(*it), sizeof(PriKey));
-        off ++;
-    }
-    off = 0;
     for (auto it = for_list.begin(); it != for_list.end(); it++) {
         memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * off], &(*it), sizeof(ForKey));
         off ++;
-    }    
+    } 
+    off = 0; 
+    for (auto it = pri_list.begin(); it != pri_list.end(); it++) {
+        memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * off], &(*it), sizeof(PriKey));
+        off ++;
+    }  
     b_manager->markDirty(new_bufID);
     b_manager->writeBack(new_bufID);
 

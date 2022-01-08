@@ -167,8 +167,23 @@ antlrcpp::Any MyVisitor::visitAlter_table_drop_foreign_key(SQLParser::Alter_tabl
     System_manager s_m;
     s_m.use_database(db_now);
 
-    cout << ctx->Identifier()[0]->getText() << " " << ctx->Identifier()[1]->getText() << endl;
     s_m.drop_foreignkey(ctx->Identifier()[0]->getText(), ctx->Identifier()[1]->getText());
     return visitChildren(ctx);
 }
 
+antlrcpp::Any MyVisitor::visitAlter_table_add_pk(SQLParser::Alter_table_add_pkContext *ctx) {
+    System_manager s_m;
+    s_m.use_database(db_now);
+
+    s_m.add_prikey(ctx->Identifier()[0]->getText(), ctx->identifiers()->getText());
+    return visitChildren(ctx);
+}
+
+antlrcpp::Any MyVisitor::visitAlter_table_drop_pk(SQLParser::Alter_table_drop_pkContext *ctx) {
+    System_manager s_m;
+    s_m.use_database(db_now);
+
+    s_m.drop_prikey(ctx->Identifier()[0]->getText(), ctx->Identifier()[1]->getText());
+
+    return visitChildren(ctx);
+}
