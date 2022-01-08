@@ -15,6 +15,11 @@ antlrcpp::Any MyVisitor::visitCreate_db(SQLParser::Create_dbContext *ctx) {
     return visitChildren(ctx);
 }
 
+antlrcpp::Any MyVisitor::visitDrop_db(SQLParser::Drop_dbContext *ctx) {
+    System_manager s_m;
+    s_m.drop_database(ctx->Identifier()->getText());   
+    return visitChildren(ctx); 
+}
 
 antlrcpp::Any MyVisitor::visitShow_dbs(SQLParser::Show_dbsContext *ctx) {
     System_manager s_m;
@@ -112,6 +117,7 @@ antlrcpp::Any MyVisitor::visitCreate_table(SQLParser::Create_tableContext *ctx) 
         }
     }
     t_h.pro_num = properties.size(); t_h.prikey_num = prikeys.size(); t_h.forkey_num = forkeys.size();
+    t_h.index_num = 0;
     
     string name = ctx->Identifier()->getText();
     s_m.create_table(name, t_h, properties, prikeys, forkeys);
@@ -186,4 +192,20 @@ antlrcpp::Any MyVisitor::visitAlter_table_drop_pk(SQLParser::Alter_table_drop_pk
     s_m.drop_prikey(ctx->Identifier()[0]->getText(), ctx->Identifier()[1]->getText());
 
     return visitChildren(ctx);
+}
+
+antlrcpp::Any MyVisitor::visitAlter_add_index(SQLParser::Alter_add_indexContext *ctx) {
+    System_manager s_m;
+    s_m.use_database(db_now);
+
+    s_m.add_index(ctx->Identifier()->getText(), ctx->identifiers()->getText());
+    return visitChildren(ctx);
+}
+
+antlrcpp::Any MyVisitor::visitAlter_drop_index(SQLParser::Alter_drop_indexContext *ctx) {
+    System_manager s_m;
+    s_m.use_database(db_now);
+
+    s_m.drop_index(ctx->Identifier()->getText(), ctx->identifiers()->getText());
+    return visitChildren(ctx);    
 }

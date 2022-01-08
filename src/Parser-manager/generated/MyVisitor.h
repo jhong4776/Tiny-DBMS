@@ -9,6 +9,7 @@ public:
     MyVisitor();
     ~MyVisitor();
     virtual antlrcpp::Any visitCreate_db(SQLParser::Create_dbContext *ctx);
+    virtual antlrcpp::Any visitDrop_db(SQLParser::Drop_dbContext *ctx);
     virtual antlrcpp::Any visitShow_dbs(SQLParser::Show_dbsContext *ctx);
     virtual antlrcpp::Any visitUse_db(SQLParser::Use_dbContext *ctx);
     virtual antlrcpp::Any visitCreate_table(SQLParser::Create_tableContext *ctx);
@@ -20,4 +21,6 @@ public:
     virtual antlrcpp::Any visitShow_tables(SQLParser::Show_tablesContext *ctx);
     virtual antlrcpp::Any visitAlter_table_add_pk(SQLParser::Alter_table_add_pkContext *ctx);
     virtual antlrcpp::Any visitAlter_table_drop_pk(SQLParser::Alter_table_drop_pkContext *ctx);
+    virtual antlrcpp::Any visitAlter_add_index(SQLParser::Alter_add_indexContext *ctx);
+    virtual antlrcpp::Any visitAlter_drop_index(SQLParser::Alter_drop_indexContext *ctx);
 };

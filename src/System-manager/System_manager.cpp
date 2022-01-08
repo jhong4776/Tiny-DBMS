@@ -137,7 +137,7 @@ void System_manager::create_table(std::string name, Table_Header table_header, s
             return;
         }
     }
-
+    std::cout << "1\n";
     // 更新数据库文件头&插入新的表项
     TableList newtable;
     for (int i = 0; i < 20; i++) {
@@ -152,7 +152,7 @@ void System_manager::create_table(std::string name, Table_Header table_header, s
     
     memcpy(table_buf, &newDBHeader, sizeof(DBHeader));
     memcpy(&table_buf[sizeof(DBHeader) + sizeof(TableList)*table_num], (uint8_t *)&newtable, sizeof(TableList));
-
+    std::cout << "2\n";
     // 在数据库页式文件中创建新的数据表页，页编号即为表编号
     int table_bufID = 0;
     BufType c_table_buf = b_manager->getPage(new_fileID, newtable.table_index, table_bufID);
@@ -351,6 +351,13 @@ void System_manager::table_schema(std::string table_name) {
         std::string pri_name = foreign->prename;
         std::cout << "name = " << for_name << " table_name = " << get_table_name(new_fileID, foreign->pretable) << " priname = " << pri_name << std::endl;
     }
+    // 打印索引信息
+    std::cout << "Indexs: " << std::endl;
+    for (int i = 0; i < t_h->index_num; i++) {
+        Index* index = (Index *)&table_buf[sizeof(Table_Header) + t_h->pro_num * sizeof(Property) + t_h->prikey_num * sizeof(PriKey) + t_h->forkey_num * sizeof(ForKey) + i * sizeof(Index)];
+        std::string index_name = index->name;
+        std::cout << "Index_name = " << index_name << std::endl;
+    }    
     b_manager->release(bufID_now);
     f_manager->closeFile(new_fileID);
 }
@@ -479,6 +486,7 @@ void System_manager::add_prikey(std::string table_name, std::string prikey) {
     new_table_header.pro_num = t_h->pro_num; 
     new_table_header.prikey_num = t_h->prikey_num + 1; 
     new_table_header.forkey_num = t_h->forkey_num;
+    new_table_header.index_num = t_h->index_num;
     memcpy(table_buf, &new_table_header, sizeof(Table_Header));
 
     // 查看对应列是否存在
@@ -506,9 +514,10 @@ void System_manager::add_prikey(std::string table_name, std::string prikey) {
         return;
     }
 
-    // 获取原主键和外键
+    // 获取原主键、外键、索引
     std::list<PriKey> pri_list;
     std::list<ForKey> for_list;
+    std::list<Index>  index_list;
     for (int i = 0; i < old_prikey_num; i++) {
         PriKey* pri = (PriKey *)&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * i];
         pri_list.push_back(*pri);
@@ -518,6 +527,11 @@ void System_manager::add_prikey(std::string table_name, std::string prikey) {
         string f_n = forkey->name;
         for_list.push_back(*forkey);
     }   
+    for (int i = 0; i < t_h->index_num; i++) {
+        Index* index = (Index *)&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * old_prikey_num + sizeof(ForKey) * t_h->forkey_num + sizeof(Index) * i];
+        string i_n = index->name;
+        index_list.push_back(*index);
+    }
     PriKey new_pri_key;
     for (int i = 0; i < 20; i++) {
         new_pri_key.name[i] = 0;
@@ -527,8 +541,14 @@ void System_manager::add_prikey(std::string table_name, std::string prikey) {
     new_pri_key.fortable = -1;
     pri_list.push_back(new_pri_key);
 
-    // 将主键和外键信息重新写入页中
+    // 将主键、外键、索引信息重新写入页中
     int off = 0;
+    for (auto it = index_list.begin(); it != index_list.end(); it++) {
+        string i_n = (*it).name;
+        memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * new_table_header.prikey_num + sizeof(ForKey) * t_h->forkey_num + sizeof(Index) * off], &(*it), sizeof(Index));
+        off ++;
+    }   
+    off = 0;
     for (auto it = for_list.begin(); it != for_list.end(); it++) {
         string f_n = (*it).name;
         memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * new_table_header.prikey_num + sizeof(ForKey) * off], &(*it), sizeof(ForKey));
@@ -565,6 +585,7 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
     new_table_header.pro_num = t_h->pro_num; 
     new_table_header.prikey_num = t_h->prikey_num - 1; 
     new_table_header.forkey_num = t_h->forkey_num;
+    new_table_header.index_num = t_h->index_num;
     memcpy(table_buf, &new_table_header, sizeof(Table_Header));
 
     // 查看对应主键是否存在于元素中
@@ -595,6 +616,7 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
     // 获取原主键和外键
     std::list<PriKey> pri_list;
     std::list<ForKey> for_list;
+    std::list<Index>  index_list;
     for (int i = 0; i < old_prikey_num; i++) {
         PriKey* pri = (PriKey *)&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * i];
         string ori_name = pri->name;
@@ -613,9 +635,20 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
         ForKey* forkey = (ForKey *)&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * old_prikey_num + sizeof(ForKey) * i];
         for_list.push_back(*forkey);
     }
+    for (int i = 0; i < t_h->index_num; i++) {
+        Index* index = (Index *)&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * old_prikey_num + sizeof(ForKey) * t_h->forkey_num + sizeof(Index) * i];
+        string i_n = index->name;
+        index_list.push_back(*index);
+    }
 
     // 将主键和外键信息重新写入页中
     int off = 0;
+    for (auto it = index_list.begin(); it != index_list.end(); it++) {
+        string i_n = (*it).name;
+        memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * new_table_header.prikey_num + sizeof(ForKey) * t_h->forkey_num + sizeof(Index) * off], &(*it), sizeof(Index));
+        off ++;
+    }   
+    off = 0;
     for (auto it = for_list.begin(); it != for_list.end(); it++) {
         memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * off], &(*it), sizeof(ForKey));
         off ++;
@@ -653,6 +686,8 @@ void System_manager::add_foreignkey(std::string table_name, std::string forkey, 
     Table_Header new_table_header;
     new_table_header.pro_num = t_h->pro_num; 
     new_table_header.prikey_num = t_h->prikey_num; 
+    new_table_header.index_num = t_h->index_num;
+    int old_forkey_num = t_h->forkey_num; 
     new_table_header.forkey_num = t_h->forkey_num + 1;
     memcpy(table_buf, &new_table_header, sizeof(Table_Header));    
 
@@ -686,6 +721,22 @@ void System_manager::add_foreignkey(std::string table_name, std::string forkey, 
         f_manager->closeFile(new_fileID);
         return;           
     }
+
+    std::list<Index>  index_list;
+    for (int i = 0; i < t_h->index_num; i++) {
+        Index* index = (Index *)&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * old_forkey_num + sizeof(Index) * i];
+        string i_n = index->name;
+        index_list.push_back(*index);
+    }
+
+    // 重新写入index
+    int off = 0;
+    for (auto it = index_list.begin(); it != index_list.end(); it++) {
+        string i_n = (*it).name;
+        memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * t_h->forkey_num + sizeof(Index) * off], &(*it), sizeof(Index));
+        off ++;
+    } 
+
     // 直接添加外键
     ForKey new_forkey;
     for (int i = 0; i < 20; i++) {
@@ -720,6 +771,7 @@ void System_manager::drop_foreignkey(std::string table_name, std::string forkey)
     new_table_header.pro_num = t_h->pro_num; 
     new_table_header.prikey_num = t_h->prikey_num; 
     new_table_header.forkey_num = t_h->forkey_num - 1;
+    new_table_header.index_num = t_h->index_num;
     memcpy(table_buf, &new_table_header, sizeof(Table_Header));    
 
     // 查看对应列是否存在
@@ -746,10 +798,16 @@ void System_manager::drop_foreignkey(std::string table_name, std::string forkey)
         f_manager->closeFile(new_fileID);
         return;
     } 
+    std::list<Index>  index_list;
+    for (int i = 0; i < t_h->index_num; i++) {
+        Index* index = (Index *)&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * old_forkey_num + sizeof(Index) * i];
+        string i_n = index->name;
+        index_list.push_back(*index);
+    }
     // 直接删除外键
     std::list<ForKey> for_list;
     for (int i = 0; i < old_forkey_num; i++) {
-        ForKey* foreignkey = (ForKey *)&table_buf[sizeof(Table_Header) + sizeof(Property)  * t_h->pro_num + sizeof(PriKey) + i];
+        ForKey* foreignkey = (ForKey *)&table_buf[sizeof(Table_Header) + sizeof(Property)  * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * i];
         string ori_name = foreignkey->name;
         if (forkey != ori_name) {
             for_list.push_back(*foreignkey);
@@ -763,13 +821,19 @@ void System_manager::drop_foreignkey(std::string table_name, std::string forkey)
                 return;           
             }
         }
-    }    
+    }  
+    // 重新写入index
     int off = 0;
+    for (auto it = index_list.begin(); it != index_list.end(); it++) {
+        string i_n = (*it).name;
+        memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * t_h->forkey_num + sizeof(Index) * off], &(*it), sizeof(Index));
+        off ++;
+    }   
+    off = 0;
     for (auto it = for_list.begin(); it != for_list.end(); it++) {
         memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * off], &(*it), sizeof(ForKey));
         off ++;
     }
-
     b_manager->markDirty(new_bufID);
     b_manager->writeBack(new_bufID);
     f_manager->closeFile(new_fileID);
@@ -801,4 +865,99 @@ int System_manager::get_Index(int tableID) {
 
 std::string System_manager::get_database_now() {
     return database_now;
+}
+
+void System_manager::add_index(std::string table_name, std::string index_name) {
+    int new_fileID = 0;
+    int new_bufID = 0;
+    f_manager->openFile(database_now.data(), new_fileID);
+    int pageID = get_table_ID(new_fileID, table_name);
+    if (pageID == -1) {
+        std::cout << "Error : table " << table_name << "doesn't exit!" << std::endl;
+        f_manager->closeFile(new_fileID);
+        return;
+    }
+
+    BufType table_buf = b_manager->getPage(new_fileID, pageID, new_bufID);    
+    Table_Header* t_h = (Table_Header *)table_buf;
+    Table_Header new_table_header;
+
+    new_table_header.pro_num = t_h->pro_num; 
+    new_table_header.prikey_num = t_h->prikey_num; 
+    new_table_header.forkey_num = t_h->forkey_num;
+    new_table_header.index_num = t_h->index_num + 1;
+    memcpy(table_buf, &new_table_header, sizeof(Table_Header));
+
+    // 查看对应列是否存在
+    bool exit = false;
+    for (int i = 0; i < t_h->pro_num; i++) {
+        Index* index = (Index *)&table_buf[sizeof(Table_Header) + sizeof(Property) * i];
+        string index_namei = index->name;
+        if (index_name == index_namei) {
+            exit = true;
+            break;
+        }
+    }
+    if (exit == false) {
+        std::cout << "Error : " << index_name << " doesn't in table!" << std::endl;
+        b_manager->release(new_bufID);
+        f_manager->closeFile(new_fileID);
+        return;        
+    }
+
+    // 直接写入Index
+    Index new_index;
+    for (int i = 0; i < 20; i++)
+        new_index.name[i] = 0;
+    index_name.copy(new_index.name, 20, 0);
+    memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * t_h->forkey_num + sizeof(Index) * (t_h->index_num - 1)], &new_index, sizeof(Index));
+    b_manager->markDirty(new_bufID);
+    b_manager->writeBack(new_bufID);
+    f_manager->closeFile(new_fileID);
+}
+
+void System_manager::drop_index(std::string table_name, std::string index_name) {
+    int new_fileID = 0;
+    int new_bufID = 0;
+    f_manager->openFile(database_now.data(), new_fileID);
+    int pageID = get_table_ID(new_fileID, table_name);
+    if (pageID == -1) {
+        std::cout << "Error : table " << table_name << "doesn't exit!" << std::endl;
+        f_manager->closeFile(new_fileID);
+        return;
+    }
+
+    BufType table_buf = b_manager->getPage(new_fileID, pageID, new_bufID);    
+    Table_Header* t_h = (Table_Header *)table_buf;
+    Table_Header new_table_header;
+
+    new_table_header.pro_num = t_h->pro_num; 
+    new_table_header.prikey_num = t_h->prikey_num; 
+    new_table_header.forkey_num = t_h->forkey_num;
+    new_table_header.index_num = t_h->index_num - 1;
+    memcpy(table_buf, &new_table_header, sizeof(Table_Header));
+
+    // 直接删除Index
+    std::list<Index> index_list;
+    bool has_del = false;
+    for (int i = 0; i < t_h->index_num + 1; i++) {
+        Index* index = (Index *)&table_buf[sizeof(Table_Header) + sizeof(Property)  * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * t_h->forkey_num + sizeof(Index) * i];
+        string index_namei = index->name;
+        if (index_namei != index_name) {
+            index_list.push_back(*index);
+        } else {
+            has_del = true;
+        }
+    }
+    if (has_del == false) std::cout << "Error Index " << index_name << " doesn't exit!" << std::endl;
+    
+    int off = 0;
+    for (auto it = index_list.begin(); it != index_list.end(); it++) {
+        string i_n = (*it).name;
+        memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * t_h->forkey_num + sizeof(Index) * off], &(*it), sizeof(Index));
+        off ++;
+    }   
+    b_manager->markDirty(new_bufID);
+    b_manager->writeBack(new_bufID);
+    f_manager->closeFile(new_fileID);        
 }
