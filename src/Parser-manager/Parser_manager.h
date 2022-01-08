@@ -11,5 +11,5 @@ class Parser_manager {
     public:
     Parser_manager();
     ~Parser_manager();
-    void parse(std::string sSQL);
+    void parse(std::string sSQL, MyVisitor* lbase);
 };

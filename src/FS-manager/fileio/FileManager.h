@@ -61,7 +61,6 @@ public:
 		offset = (offset << PAGE_SIZE_IDX);
 		off_t error = lseek(f, offset, SEEK_SET);
 		if (error != offset) {
-			std::cout << "error" << std::endl;
 			return -1;
 		}
 		BufType b = buf + off;
@@ -121,7 +120,6 @@ public:
 	 */
 	bool openFile(const char* name, int& fileID) {
 		fileID = fm->getNewID();
-		std::cout << "name = " << name << " fileID = " << fileID << std::endl;
 		fm->setBit(fileID);
 		int open_suc = _openFile(name, fileID);
 		if (open_suc == -1) {

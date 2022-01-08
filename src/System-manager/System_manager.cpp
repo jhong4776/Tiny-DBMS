@@ -2,15 +2,13 @@
 #include <string.h>
 #include <stdint.h>
 
-System_manager::System_manager() { 
-    std::cout << "System_manager creating..." << std::endl;
+System_manager::System_manager() {
     f_manager = new FileManager();
     bool new_file = f_manager->openFile("system", fileID);
     b_manager = new BufPageManager(f_manager);
     update = false;
 
     if (new_file == false){
-        std::cout << "create system1" << std::endl;
         f_manager->createFile("system");
         new_file = f_manager->openFile("system", fileID);
         database_num = 0;
@@ -24,7 +22,6 @@ System_manager::System_manager() {
         buf = b_manager->getPage(fileID, 0, bufID);
         memcpy(len, buf, sizeof(int));
         database_num = *len;
-        std::cout << "len = " << database_num << " bufID = " << bufID << std::endl;
 
         for (int i = 0; i < database_num; i++) {
             char database_name[20];
@@ -33,11 +30,9 @@ System_manager::System_manager() {
             databases.push_back(name);
         }
     } 
-    std::cout << "System_manager created!" << std::endl;
 }
 
 System_manager::~System_manager() {
-    std::cout << "destorying System_manager" << std::endl;
     if (update == true) {
         memcpy(buf, (uint8_t *)&database_num, sizeof(int));
         int offset = 0;
@@ -55,7 +50,6 @@ System_manager::~System_manager() {
 }
 
 void System_manager::create_database(std::string name) {
-    std::cout << "create database" << std::endl;
     bool error = false;
     for (auto it = databases.begin(); it != databases.end(); it++) {
         if((*it) == name) {
@@ -87,7 +81,6 @@ void System_manager::create_database(std::string name) {
 }
 
 void System_manager::drop_database(std::string name) {
-    std::cout << "drop database" << std::endl;
     bool error = true;
     for (auto it = databases.begin(); it != databases.end(); it++) {
         if((*it) == name) {
@@ -118,7 +111,6 @@ void System_manager::use_database(std::string name) {
         std::cout << "Can't use database " << name << " database doesn't exists" << std::endl;
         return;
     }
-    std::cout << "use " << database_now << std::endl;
 }
 
 void System_manager::create_table(std::string name, Table_Header table_header, std::list<Property> property, std::list<PriKey> prikey, std::list<ForKey> forkey) {
@@ -133,7 +125,6 @@ void System_manager::create_table(std::string name, Table_Header table_header, s
     // 解析数据库文件头
     DBHeader* new_header = (DBHeader*)table_buf;
     int table_num = new_header->size;
-    std::cout << "len = " << new_header->size << " newID = " << new_header->newID << " bufID = " << bufID_now << std::endl;
 
     std::list<std::string> all_table;
     for (int i = 0; i < table_num; i++) {
@@ -205,7 +196,6 @@ void System_manager::create_table(std::string name, Table_Header table_header, s
 }
 
 void System_manager::drop_table(std::string name) {
-    std::cout << "drop table " << name << std::endl;
 
     // 打开数据库文件
     int bufID_now = 0;
@@ -216,7 +206,6 @@ void System_manager::drop_table(std::string name) {
     // 解析数据库文件头
     DBHeader* new_header = (DBHeader*)table_buf;
     int table_num = new_header->size;
-    std::cout << "len = " << new_header->size << " newID = " << new_header->newID << std::endl;
 
     bool table_exit = false;
     std::list<TableList> tables_in_DB;
@@ -261,7 +250,6 @@ void System_manager::rename_table(std::string oldname, std::string newname) {
     // 解析数据库文件头
     DBHeader* new_header = (DBHeader*)table_buf;
     int table_num = new_header->size;
-    std::cout << "len = " << new_header->size << " newID = " << new_header->newID << std::endl;
 
     int index = -1;
     TableList R_table;
@@ -290,7 +278,6 @@ void System_manager::rename_table(std::string oldname, std::string newname) {
 
 std::list<std::string>* System_manager::show_table() {
     std::list<std::string>* table_names = new std::list<std::string>;
-    std::cout << "show tables in " << database_now << std::endl;
 
     // 打开数据库文件
     int bufID_now = 0;
@@ -301,9 +288,7 @@ std::list<std::string>* System_manager::show_table() {
     // 解析数据库文件头
     DBHeader* new_header = (DBHeader*)table_buf;
     int table_num = new_header->size;
-    std::cout << "len = " << new_header->size << " newID = " << new_header->newID << std::endl;    
 
-    std::cout << "---------------------";
     for (int i = 0; i < table_num; i++) {
         TableList* table = (TableList *)&table_buf[sizeof(DBHeader) + sizeof(TableList) * i];
         string name = table->table_name;
@@ -318,7 +303,9 @@ std::list<std::string>* System_manager::show_database() {
     std::list<std::string>* database_names = new std::list<std::string>;
     for (auto it = databases.begin(); it != databases.end(); it++) {
         database_names->push_back((*it));
+        std::cout << (*it) << " ";
     }
+    std::cout << std::endl;
     return database_names;
 }
 
@@ -330,7 +317,6 @@ void System_manager::table_schema(std::string table_name) {
     // 获取该数据表所在页
     int pageID = get_table_ID(new_fileID, table_name);
     BufType table_buf = b_manager->getPage(new_fileID, pageID, bufID_now);   
-    std::cout << "pageID = " << pageID << std::endl; 
     if (pageID == -1) {
         std::cout << "Error : table " << table_name << " doesn't exit" << std::endl;
         return;
@@ -363,7 +349,7 @@ void System_manager::table_schema(std::string table_name) {
         ForKey* foreign = (ForKey *)&table_buf[sizeof(Table_Header) + t_h->pro_num * sizeof(Property) + t_h->prikey_num * sizeof(PriKey) + i * sizeof(ForKey)];
         std::string for_name = foreign->name;
         std::string pri_name = foreign->prename;
-        std::cout << "name = " << for_name << "table_name = " << get_table_name(new_fileID, foreign->pretable) << " priname = " << pri_name << std::endl;
+        std::cout << "name = " << for_name << " table_name = " << get_table_name(new_fileID, foreign->pretable) << " priname = " << pri_name << std::endl;
     }
     b_manager->release(bufID_now);
     f_manager->closeFile(new_fileID);
@@ -371,7 +357,6 @@ void System_manager::table_schema(std::string table_name) {
 
 int System_manager::get_table_ID(int fID, std::string table_name) {
     // 打开数据库文件
-    std::cout << "fID = " << fID << std::endl;
     int bufID_now = 0;
     if (fID == -1)
         f_manager->openFile(database_now.data(), fID); 
@@ -380,7 +365,6 @@ int System_manager::get_table_ID(int fID, std::string table_name) {
     // 解析数据库文件头
     DBHeader* new_header = (DBHeader*)table_buf;
     int table_num = new_header->size;
-    std::cout << "len = " << new_header->size << " newID = " << new_header->newID << " bufID = " << bufID_now << std::endl;
 
     for (int i = 0; i < table_num; i++) {
         TableList* tablelist = (TableList*)&table_buf[sizeof(DBHeader) + i * sizeof(TableList)];
@@ -404,7 +388,6 @@ std::string System_manager::get_table_name(int fID, int pageID) {
     // 解析数据库文件头
     DBHeader* new_header = (DBHeader*)table_buf;
     int table_num = new_header->size;
-    // std::cout << "len = " << new_header->size << " newID = " << new_header->newID << " bufID = " << bufID_now << std::endl;
 
     for (int i = 0; i < table_num; i++) {
         TableList* tablelist = (TableList*)&table_buf[sizeof(DBHeader) + i * sizeof(TableList)];
@@ -432,7 +415,6 @@ bool System_manager::insert_foreign_key(std::string forname, int forpage, std::s
     for (int i = 0; i < pri_table_h->prikey_num; i++) {
         PriKey* prikey = (PriKey *)&table_buf[sizeof(Table_Header) + sizeof(Property)  * pri_table_h->pro_num + sizeof(PriKey) * i];   
         string p_name = prikey->name;
-        std::cout << "pname = " << p_name << " priname = " << priname << std::endl;
         if (priname == p_name) {
             PriKey pri_update;
             for (int i = 0; i < 20; i++) {
@@ -461,7 +443,6 @@ bool System_manager::drop_foreign_key(std::string forname, int forpage, std::str
     for (int i = 0; i < pri_table_h->prikey_num; i++) {
         PriKey* prikey = (PriKey *)&table_buf[sizeof(Table_Header) + sizeof(Property)  * pri_table_h->pro_num + sizeof(PriKey) * i];   
         string p_name = prikey->name;
-        std::cout << "pname = " << p_name << " priname = " << priname << std::endl;
         if (priname == p_name) {
             PriKey pri_update;
             for (int i = 0; i < 20; i++) {
@@ -589,7 +570,6 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
     for (int i = 0; i < t_h->pro_num; i++) {
         Property* pro = (Property *)&table_buf[sizeof(Table_Header) + sizeof(Property) * i];
         string ori_name = pro->name;
-        std::cout << "oriname = " << ori_name << " pro_name = " << pro->name << std::endl;
         if (ori_name == prikey) {
             if (pro->prikey == false) {
                 std::cout << ori_name << " is not a primary key!" << std::endl;
@@ -613,11 +593,9 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
     // 获取原主键和外键
     std::list<PriKey> pri_list;
     std::list<ForKey> for_list;
-    std::cout << "PRIKEY_NUM = " << old_prikey_num << std::endl;
     for (int i = 0; i < old_prikey_num; i++) {
         PriKey* pri = (PriKey *)&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * i];
         string ori_name = pri->name;
-        std::cout << "ORI_NAME = " << ori_name << " PRI_NAME = " << pri->name << " PRI->FORTABLE = " << pri->fortable << std::endl;
         if (prikey == ori_name) {
             if (pri->fortable != -1) {
                 std::cout << "Error : constraint by foreign key" << std::endl;
