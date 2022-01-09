@@ -1,6 +1,7 @@
 #include "SQLBaseVisitor.h"
 #include "../../Index-manager/Index_manager.h"
 #include "../../System-manager/System_manager.h"
+#include "../../Record-manager/Record_manager.h"
 #include <string>
 
 class MyVisitor : public SQLBaseVisitor{
@@ -23,4 +24,6 @@ public:
     virtual antlrcpp::Any visitAlter_table_drop_pk(SQLParser::Alter_table_drop_pkContext *ctx);
     virtual antlrcpp::Any visitAlter_add_index(SQLParser::Alter_add_indexContext *ctx);
     virtual antlrcpp::Any visitAlter_drop_index(SQLParser::Alter_drop_indexContext *ctx);
+    virtual antlrcpp::Any visitInsert_into_table(SQLParser::Insert_into_tableContext *ctx);
+    virtual antlrcpp::Any visitDelete_from_table(SQLParser::Delete_from_tableContext *ctx);
 };

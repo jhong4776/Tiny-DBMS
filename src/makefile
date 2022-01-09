@@ -22,6 +22,8 @@ Index-manager/BplusTree.cpp \
 Index-manager/Index_manager.cpp \
 Page-manager/Header_manager.cpp \
 Parser-manager/Parser_manager.cpp \
+Record-manager/Record_manager.cpp \
+Check-manager/Check_manager.cpp \
 $(wildcard ./*cpp $(SRC)*.cpp) \
 $(wildcard ./*cpp $(GENERATED)*.cpp) \
 $(wildcard ./*cpp $(ATN)*.cpp) \

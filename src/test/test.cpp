@@ -5,7 +5,7 @@
 
 using namespace std;
 
-int main() {
+int main() { 
     Parser_manager p_m;
     MyVisitor* lbase = new MyVisitor();
     string input;
@@ -20,6 +20,7 @@ int main() {
                 cout << "mysql> ";
             else
                 cout << "    -> ";
+            cin.clear();
             getline(cin,temp);
 
             if (temp == "quit")

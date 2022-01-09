@@ -487,6 +487,7 @@ void System_manager::add_prikey(std::string table_name, std::string prikey) {
     new_table_header.prikey_num = t_h->prikey_num + 1; 
     new_table_header.forkey_num = t_h->forkey_num;
     new_table_header.index_num = t_h->index_num;
+    new_table_header.max_page = t_h->max_page;
     memcpy(table_buf, &new_table_header, sizeof(Table_Header));
 
     // 查看对应列是否存在
@@ -586,6 +587,7 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
     new_table_header.prikey_num = t_h->prikey_num - 1; 
     new_table_header.forkey_num = t_h->forkey_num;
     new_table_header.index_num = t_h->index_num;
+    new_table_header.max_page = t_h->max_page;
     memcpy(table_buf, &new_table_header, sizeof(Table_Header));
 
     // 查看对应主键是否存在于元素中
@@ -689,6 +691,7 @@ void System_manager::add_foreignkey(std::string table_name, std::string forkey, 
     new_table_header.index_num = t_h->index_num;
     int old_forkey_num = t_h->forkey_num; 
     new_table_header.forkey_num = t_h->forkey_num + 1;
+    new_table_header.max_page = t_h->max_page;
     memcpy(table_buf, &new_table_header, sizeof(Table_Header));    
 
     // 查看对应列是否存在
@@ -772,6 +775,7 @@ void System_manager::drop_foreignkey(std::string table_name, std::string forkey)
     new_table_header.prikey_num = t_h->prikey_num; 
     new_table_header.forkey_num = t_h->forkey_num - 1;
     new_table_header.index_num = t_h->index_num;
+    new_table_header.max_page = t_h->max_page;
     memcpy(table_buf, &new_table_header, sizeof(Table_Header));    
 
     // 查看对应列是否存在
@@ -839,30 +843,6 @@ void System_manager::drop_foreignkey(std::string table_name, std::string forkey)
     f_manager->closeFile(new_fileID);
 }
 
-void System_manager::update_Index(int tableID) {
-    int b_ID = 0;
-    int fID = 0;
-    f_manager->openFile(database_now.data(), fID);
-    BufType t_buf = b_manager->getPage(fID, tableID, b_ID);
-    Table_Header * t_h = (Table_Header *)t_buf;
-    t_h->max_priIndex++;
-    b_manager->markDirty(b_ID);
-    b_manager->writeBack(b_ID);
-    f_manager->closeFile(fID);
-}
-
-int System_manager::get_Index(int tableID) {
-    int b_ID = 0;
-    int fID = 0;
-    f_manager->openFile(database_now.data(), fID);
-    BufType t_buf = b_manager->getPage(fID, tableID, b_ID);
-    Table_Header * t_h = (Table_Header *)t_buf;
-    int index_value = t_h->max_priIndex;
-    b_manager->release(b_ID);
-    f_manager->closeFile(fID);
-    return index_value;
-}
-
 std::string System_manager::get_database_now() {
     return database_now;
 }
@@ -886,6 +866,7 @@ void System_manager::add_index(std::string table_name, std::string index_name) {
     new_table_header.prikey_num = t_h->prikey_num; 
     new_table_header.forkey_num = t_h->forkey_num;
     new_table_header.index_num = t_h->index_num + 1;
+    new_table_header.max_page = t_h->max_page;
     memcpy(table_buf, &new_table_header, sizeof(Table_Header));
 
     // 查看对应列是否存在
@@ -935,6 +916,7 @@ void System_manager::drop_index(std::string table_name, std::string index_name) 
     new_table_header.prikey_num = t_h->prikey_num; 
     new_table_header.forkey_num = t_h->forkey_num;
     new_table_header.index_num = t_h->index_num - 1;
+    new_table_header.max_page = t_h->max_page;
     memcpy(table_buf, &new_table_header, sizeof(Table_Header));
 
     // 直接删除Index
@@ -960,4 +942,126 @@ void System_manager::drop_index(std::string table_name, std::string index_name) 
     b_manager->markDirty(new_bufID);
     b_manager->writeBack(new_bufID);
     f_manager->closeFile(new_fileID);        
+}
+
+int System_manager::get_recordLen(int tableID) {
+    int bufID = 0;
+    int fID = 0;
+    f_manager->openFile(database_now.data(), fID);
+    BufType buf = b_manager->getPage(fID, tableID, bufID);
+
+    Table_Header* t_h = (Table_Header *)buf;
+    int len = 0;
+
+    for (int i = 0; i < t_h->pro_num; i++) {
+        Property* pro = (Property *)&buf[sizeof(Table_Header) + sizeof(Property) * i];
+        len += pro->len;
+    }
+
+    b_manager->release(bufID);
+    f_manager->closeFile(fID);
+
+    return len;
+}
+
+std::vector<Property> System_manager::get_property_vector(int tableID) {
+    int bufID = 0;
+    int fID = 0;
+    f_manager->openFile(database_now.data(), fID);
+    BufType buf = b_manager->getPage(fID, tableID, bufID);
+
+    Table_Header* t_h = (Table_Header *)buf;
+    int pro_num = t_h->pro_num;
+
+    std::vector<Property> p_v;
+    for (int i = 0; i < pro_num; i++) {
+        Property* pro = (Property *)&buf[sizeof(Table_Header) + i * sizeof(Property)];
+        p_v.push_back(*pro);
+    }
+    b_manager->release(bufID);
+    f_manager->closeFile(fID);
+    return p_v;
+}
+
+std::vector<Index> System_manager::get_index_vector(int tableID) {
+    int bufID = 0;
+    int fID = 0;
+    f_manager->openFile(database_now.data(), fID);
+    BufType buf = b_manager->getPage(fID, tableID, bufID);
+
+    Table_Header* t_h = (Table_Header *)buf;
+    int index_num = t_h->index_num;
+
+    std::vector<Index> i_v;
+    for (int i = 0; i < index_num; i++) {
+        Index* ind = (Index *)&buf[sizeof(Table_Header) + t_h->pro_num * sizeof(Property) + t_h->prikey_num * sizeof(PriKey) + t_h->forkey_num * sizeof(ForKey)
+                                        + i * sizeof(Index)];
+        i_v.push_back(*ind);
+    }
+    b_manager->release(bufID);
+    f_manager->closeFile(fID);
+    return i_v;
+}
+
+std::vector<PriKey> System_manager::get_pri_vector(int tableID) {
+    int bufID = 0;
+    int fID = 0;
+    f_manager->openFile(database_now.data(), fID);
+    BufType buf = b_manager->getPage(fID, tableID, bufID);
+
+    Table_Header* t_h = (Table_Header *)buf;
+    int pri_num = t_h->prikey_num;
+
+    std::vector<PriKey> p_v;
+    for (int i = 0; i < pri_num; i++) {
+        PriKey* pri = (PriKey *)&buf[sizeof(Table_Header) + t_h->pro_num * sizeof(Property) + t_h->prikey_num * sizeof(PriKey) * i];
+        p_v.push_back(*pri);
+    }
+    b_manager->release(bufID);
+    f_manager->closeFile(fID);
+    return p_v;
+}
+
+std::vector<ForKey> System_manager::get_for_vector(int tableID) {
+    int bufID = 0;
+    int fID = 0;
+    f_manager->openFile(database_now.data(), fID);
+    BufType buf = b_manager->getPage(fID, tableID, bufID);
+
+    Table_Header* t_h = (Table_Header *)buf;
+    int for_num = t_h->forkey_num;
+
+    std::vector<ForKey> f_v;
+    for (int i = 0; i < for_num; i++) {
+        ForKey* fork = (ForKey *)&buf[sizeof(Table_Header) + t_h->pro_num * sizeof(Property) + t_h->prikey_num * sizeof(PriKey) + i * sizeof(ForKey)];
+        f_v.push_back(*fork);
+    }
+    b_manager->release(bufID);
+    f_manager->closeFile(fID);
+
+    return f_v;
+}
+
+void System_manager::update_pagenum(int tableID) {
+    int bufID = 0;
+    int fID = 0;
+    f_manager->openFile(database_now.data(), fID);
+    BufType buf = b_manager->getPage(fID, tableID, bufID);
+
+    Table_Header* t_h = (Table_Header *)buf; 
+    t_h->max_page++;
+    b_manager->markDirty(bufID);
+    b_manager->writeBack(bufID);
+    f_manager->closeFile(fID);   
+}
+
+Table_Header* System_manager::get_tableHeader(int tableID) {
+    int bufID = 0;
+    int fID = 0;
+    f_manager->openFile(database_now.data(), fID);
+    BufType buf = b_manager->getPage(fID, tableID, bufID);
+
+    Table_Header* t_h = (Table_Header *)buf;
+    f_manager->closeFile(fID);
+    return t_h;  
 }

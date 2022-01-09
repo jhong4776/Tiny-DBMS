@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <list>
+#include <vector>
 #include <map>
 #include <string>
 #include "../FS-manager/fileio/FileManager.h"
@@ -58,9 +59,14 @@ public:
     void drop_foreignkey(std::string table_name, std::string forkey);
     void add_index(std::string table_name, std::string index_name);
     void drop_index(std::string table_name, std::string index_name);
-    void update_Index(int tableID);
-    int get_Index(int tableID);
+    void update_pagenum(int tableID);
+    int get_recordLen(int tableID);
+    Table_Header* get_tableHeader(int tableID);
     std::string get_database_now();
+    std::vector<Property> get_property_vector(int tableID);
+    std::vector<Index> get_index_vector(int tableID);
+    std::vector<PriKey> get_pri_vector(int tableID);
+    std::vector<ForKey> get_for_vector(int tableID);
 };
 
 

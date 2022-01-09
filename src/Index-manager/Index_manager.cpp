@@ -30,6 +30,11 @@ RC IndexHandler::OpenIndex(string database_name, string table_name, string Index
     return 0;
 }
 
+RC IndexHandler::OpenIndex(string database_name, int table_ID, std::string Index_name) {
+    btree.initial_tree_root(table_ID, database_name, Index_name);
+    return 0;    
+} 
+
 RC IndexHandler::CloseIndex() {
     return 0;
 }

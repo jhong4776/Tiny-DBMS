@@ -1,4 +1,6 @@
 #include "MyVisitor.h"
+#include "../../Check-manager/Check_manager.h"
+#include "../../Record-manager/Record_manager.h"
 #include <iostream>
 
 using namespace std;
@@ -117,10 +119,14 @@ antlrcpp::Any MyVisitor::visitCreate_table(SQLParser::Create_tableContext *ctx) 
         }
     }
     t_h.pro_num = properties.size(); t_h.prikey_num = prikeys.size(); t_h.forkey_num = forkeys.size();
-    t_h.index_num = 0;
+    t_h.index_num = 0; t_h.max_page = 0;
     
     string name = ctx->Identifier()->getText();
     s_m.create_table(name, t_h, properties, prikeys, forkeys);
+
+    Record_manager r_m;
+    r_m.createFile(db_now, s_m.get_table_ID(-1, name));
+    
     return visitChildren(ctx);
 }
 
@@ -208,4 +214,85 @@ antlrcpp::Any MyVisitor::visitAlter_drop_index(SQLParser::Alter_drop_indexContex
 
     s_m.drop_index(ctx->Identifier()->getText(), ctx->identifiers()->getText());
     return visitChildren(ctx);    
+}
+
+antlrcpp::Any MyVisitor::visitInsert_into_table(SQLParser::Insert_into_tableContext *ctx) {
+    System_manager s_m;
+    s_m.use_database(db_now);
+
+    CheckTool ctool(db_now);
+
+    string table_name = ctx->Identifier()->getText();
+    vector<Property> p_v = s_m.get_property_vector(s_m.get_table_ID(-1, table_name));
+    char input[1024];
+    for (int i = 0; i < 1024; i++)
+        input[i] = 0;
+    int len = 0;
+    for (int i = 0; i < ctx->value_lists()->value_list()[0]->value().size(); i++) {
+        SQLParser::ValueContext* vlx = ctx->value_lists()->value_list()[0]->value()[i];
+        if(vlx->Integer() != nullptr){
+            if(p_v[i].type != 0) {
+                cout << "Error : type doesn't match" << endl;
+                return 0;
+            } 
+            int num = atoi(vlx->Integer()->getText().c_str());
+            memcpy(&input[len], &num, sizeof(int));
+
+            string coloum = p_v[i].name;
+            if(!ctool.checkPrikey(table_name, coloum, num)) {
+                cout << "Reference error!" << endl;
+                return 0;
+            }
+        }
+        if(vlx->String() != nullptr) {
+            if(p_v[i].type != 1) {
+                cout << "Error : type doesn't match" << endl;
+                return 0;
+            }     
+            if (vlx->String()->getText().size() > p_v[i].len) {
+                cout << "Error : varchar " << vlx->String()->getText() << " is too large." << endl;
+            }
+            memcpy(&input[len], vlx->String()->getText().data(), p_v[i].len);
+
+            string pri = vlx->String()->getText();
+
+            string coloum = p_v[i].name;
+            if(!ctool.checkPrikey(table_name, coloum, pri)) {
+                cout << "Reference error!" << endl;
+                return 0;
+            }      
+        }
+        if(vlx->Float() != nullptr) {
+            if(p_v[i].type != 2) {
+                cout << "Error : type doesn't match" << endl;
+                return 0;
+            }  
+            float num = atof(vlx->Integer()->getText().c_str());
+            memcpy(&input[len], &num, sizeof(float));
+
+            string coloum = p_v[i].name;
+            if(!ctool.checkPrikey(table_name, coloum, num)) {
+                cout << "Reference error!" << endl;
+                return 0;
+            }            
+        }
+        if(vlx->Null() != nullptr) {
+            if (p_v[i].be_null == false) {
+                cout << "Error : " << p_v[i].name << " can not be null" << endl;
+                return 0;
+            }
+        }
+        len += p_v[i].len;
+    }
+
+    Record_manager r_m;
+    int table_ID = s_m.get_table_ID(-1, ctx->Identifier()->getText());
+    r_m.openFile(db_now, table_ID);
+    int rid = r_m.insertRecord(input);
+    r_m.closeFile();
+    return visitChildren(ctx); 
+}
+
+antlrcpp::Any MyVisitor::visitDelete_from_table(SQLParser::Delete_from_tableContext *ctx) {
+    return visitChildren(ctx);     
 }

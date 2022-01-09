@@ -30,6 +30,13 @@ struct Index_Header_info
     int maxPageID;
 }; 
 
+struct Record_Header
+{
+    int pageID; // 当前最大页号
+    int slotCnt; // 本页面的记录条数
+    int len; // 一条记录的长度
+};
+
 struct Property {
     char name[20];
     int len;
@@ -61,7 +68,7 @@ struct Table_Header
     int prikey_num; // 主键个数
     int forkey_num; // 外键个数
     int index_num;  // 索引个数
-    int max_priIndex;  // 索引最大值（自动计数）
+    int max_page;  // Record页最大值（自动计数）
 };
 
 #endif
