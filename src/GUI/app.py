@@ -65,12 +65,7 @@ def frame1_button1():
     global root1
     sql = simpledialog.askstring("查找", "请输入SQL语句", parent = root1)
     # 调用main.exe 以sql作为参数
-    result = ""
-    order = rf"python3 main.exe {sql}"
-    pi= subprocess.Popen(order,shell=True,stdout=subprocess.PIPE)
-    for i in iter(pi.stdout.readline,'b'):
-        result += i.decode('gbk')
-    
+    result = pi.communicate(input=sql)
     # 得到返回值，然后输出
     messagebox.showinfo("Result", result,parent=root1)
 
@@ -93,6 +88,8 @@ def main_frame():
 
 
 if __name__ == "__main__":
+    order = rf"python3 ../final/main.exe"
+    pi= subprocess.Popen(order,shell=True,stdout=subprocess.PIPE)
     main_frame()
 
 
