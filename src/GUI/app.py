@@ -88,7 +88,7 @@ def main_frame():
 
 
 if __name__ == "__main__":
-    order = rf"python3 ../final/main.exe"
+    order = rf"../final/main.exe"
     pi= subprocess.Popen(order,shell=True,stdout=subprocess.PIPE)
     main_frame()
 
