@@ -25,7 +25,7 @@ antlrcpp::Any MyVisitor::visitDrop_db(SQLParser::Drop_dbContext *ctx) {
 
 antlrcpp::Any MyVisitor::visitShow_dbs(SQLParser::Show_dbsContext *ctx) {
     System_manager s_m;
-    s_m.show_database();
+    s_m.show_database(); 
     return visitChildren(ctx);
 }
 
@@ -122,7 +122,19 @@ antlrcpp::Any MyVisitor::visitCreate_table(SQLParser::Create_tableContext *ctx) 
     t_h.index_num = 0; t_h.max_page = 0;
     
     string name = ctx->Identifier()->getText();
-    s_m.create_table(name, t_h, properties, prikeys, forkeys);
+    bool create_t = s_m.create_table(name, t_h, properties, prikeys, forkeys);
+    
+    if (create_t == false)
+        return 0;
+
+    int tableID = s_m.get_table_ID(-1, name);
+    for (auto it = prikeys.begin(); it != prikeys.end(); it++) {
+        string priname = (*it).name;
+        IndexHandler i_m;
+        s_m.add_index(name, priname);
+        i_m.CreateIndex(db_now, tableID, priname);
+        i_m.WriteBack();
+    }
 
     Record_manager r_m;
     r_m.createFile(db_now, s_m.get_table_ID(-1, name));
@@ -187,6 +199,12 @@ antlrcpp::Any MyVisitor::visitAlter_table_add_pk(SQLParser::Alter_table_add_pkCo
     System_manager s_m;
     s_m.use_database(db_now);
 
+    CheckTool tool(db_now);
+    bool check = tool.checkDup(ctx->Identifier()[0]->getText(), ctx->identifiers()->getText());
+    if (check == false) {
+        cout << "Error : primary key duplicated!" << endl;
+        return 0;
+    }
     s_m.add_prikey(ctx->Identifier()[0]->getText(), ctx->identifiers()->getText());
     return visitChildren(ctx);
 }
@@ -195,7 +213,9 @@ antlrcpp::Any MyVisitor::visitAlter_table_drop_pk(SQLParser::Alter_table_drop_pk
     System_manager s_m;
     s_m.use_database(db_now);
 
-    s_m.drop_prikey(ctx->Identifier()[0]->getText(), ctx->Identifier()[1]->getText());
+    bool suc = s_m.drop_prikey(ctx->Identifier()[0]->getText(), ctx->Identifier()[1]->getText());
+    if (suc)
+        s_m.drop_index(ctx->Identifier()[0]->getText(), ctx->Identifier()[1]->getText());
 
     return visitChildren(ctx);
 }
@@ -204,7 +224,25 @@ antlrcpp::Any MyVisitor::visitAlter_add_index(SQLParser::Alter_add_indexContext 
     System_manager s_m;
     s_m.use_database(db_now);
 
-    s_m.add_index(ctx->Identifier()->getText(), ctx->identifiers()->getText());
+    string tablename = ctx->Identifier()->getText();
+    int table_ID = s_m.get_table_ID(-1, tablename);
+    string indexname = ctx->identifiers()->getText();
+    vector<Property> pro_v = s_m.get_property_vector(table_ID);
+
+    for (int i = 0; i < pro_v.size(); i++) {
+        string proname = pro_v[i].name;
+        if (proname == indexname) {
+            if (pro_v[i].type != 0) {
+                cout << "Can't build string index or float index" << endl;
+                return 0;
+            } else {
+                break;
+            }
+        }
+    }
+
+    CheckTool tool(db_now);
+    tool.checkDup(tablename, indexname);
     return visitChildren(ctx);
 }
 
@@ -223,11 +261,16 @@ antlrcpp::Any MyVisitor::visitInsert_into_table(SQLParser::Insert_into_tableCont
     CheckTool ctool(db_now);
 
     string table_name = ctx->Identifier()->getText();
-    vector<Property> p_v = s_m.get_property_vector(s_m.get_table_ID(-1, table_name));
+    int table_ID = s_m.get_table_ID(-1, table_name);
+    vector<Property> p_v = s_m.get_property_vector(table_ID);
     char input[1024];
     for (int i = 0; i < 1024; i++)
         input[i] = 0;
     int len = 0;
+
+    vector<Index> i_v = s_m.get_index_vector(table_ID);
+    vector<Index_record> ir_v;
+
     for (int i = 0; i < ctx->value_lists()->value_list()[0]->value().size(); i++) {
         SQLParser::ValueContext* vlx = ctx->value_lists()->value_list()[0]->value()[i];
         if(vlx->Integer() != nullptr){
@@ -242,6 +285,21 @@ antlrcpp::Any MyVisitor::visitInsert_into_table(SQLParser::Insert_into_tableCont
             if(!ctool.checkPrikey(table_name, coloum, num)) {
                 cout << "Reference error!" << endl;
                 return 0;
+            }
+            
+            for (int j = 0; j < i_v.size(); j++) {
+                string indexname = i_v[j].name;
+                if (coloum == indexname) {
+                    if (!ctool.indexCheckDup(table_ID, coloum, num)) {
+                        cout << "Error : Index Duplicated!" << endl;
+                        return 0;
+                    }
+
+                    Index_record ir;
+                    ir.index_name = indexname; ir.k = num;
+                    ir_v.push_back(ir);
+                    break;
+                }
             }
         }
         if(vlx->String() != nullptr) {
@@ -267,7 +325,7 @@ antlrcpp::Any MyVisitor::visitInsert_into_table(SQLParser::Insert_into_tableCont
                 cout << "Error : type doesn't match" << endl;
                 return 0;
             }  
-            float num = atof(vlx->Integer()->getText().c_str());
+            float num = (float)atof(vlx->Float()->getText().c_str());
             memcpy(&input[len], &num, sizeof(float));
 
             string coloum = p_v[i].name;
@@ -286,13 +344,163 @@ antlrcpp::Any MyVisitor::visitInsert_into_table(SQLParser::Insert_into_tableCont
     }
 
     Record_manager r_m;
-    int table_ID = s_m.get_table_ID(-1, ctx->Identifier()->getText());
     r_m.openFile(db_now, table_ID);
     int rid = r_m.insertRecord(input);
+
+    IndexHandler i_m;
+    for (int i = 0; i < ir_v.size(); i++) {
+        i_m.OpenIndex(db_now, table_ID, ir_v[i].index_name);
+        i_m.InsertRecoder(ir_v[i].k, rid);
+        i_m.WriteBack();
+    }
     r_m.closeFile();
     return visitChildren(ctx); 
 }
 
 antlrcpp::Any MyVisitor::visitDelete_from_table(SQLParser::Delete_from_tableContext *ctx) {
+    System_manager s_m;
+    s_m.use_database(db_now);
+
+    CheckTool tool(db_now);
+
+    string table_name = ctx->Identifier()->getText();
+    SQLParser::Where_operator_expressionContext* w_e = dynamic_cast<SQLParser::Where_operator_expressionContext*> (ctx->where_and_clause()->where_clause()[0]);
+    string colunm_name = w_e->column()->Identifier()[1]->getText();
+    SQLParser::ValueContext* v_c = dynamic_cast<SQLParser::ValueContext*>(w_e->expression()->value());
+    if (w_e->operator_()->getText() == "=") {
+        if(v_c->Integer() != nullptr) {
+            int num = atoi(v_c->getText().c_str());
+
+            if (tool.getColunmType(table_name, colunm_name) != 0) {
+                cout << "colunm error!" << endl;
+                return 0;
+            }
+            tool.checkForkey(table_name, colunm_name, num);
+        }
+        if(v_c->String() != nullptr) {
+            string data = v_c->getText();
+            if (tool.getColunmType(table_name, colunm_name) != 1) {
+                cout << "colunm error!" << endl;
+                return 0;
+            }
+
+            tool.checkForkey(table_name, colunm_name, data);
+
+            tool.mark_equa(s_m.get_table_ID(-1, table_name), colunm_name, data);              
+        }
+        if(v_c->Float() != nullptr) {
+            float num = (float)atof(v_c->getText().c_str());
+
+            if (tool.getColunmType(table_name, colunm_name) != 2) {
+                cout << "colunm error!" << endl;
+                return 0;
+            }
+            tool.checkForkey(table_name, colunm_name, num);
+
+            tool.mark_equa(s_m.get_table_ID(-1, table_name), colunm_name, num);            
+        }
+    }
     return visitChildren(ctx);     
+}
+
+antlrcpp::Any MyVisitor::visitUpdate_table(SQLParser::Update_tableContext *ctx) {
+    System_manager s_m;
+    s_m.use_database(db_now);
+
+    string table1 = ctx->Identifier()->getText();
+    string column1 = ctx->set_clause()->Identifier()[0]->getText();
+    string value1 = ctx->set_clause()->value()[0]->getText();
+    SQLParser::Where_operator_expressionContext* w_e = dynamic_cast<SQLParser::Where_operator_expressionContext*> (ctx->where_and_clause()->where_clause()[0]);
+    string table2 = w_e->column()->Identifier()[0]->getText();
+    string column2 = w_e->column()->Identifier()[1]->getText();
+    string value2 = w_e->expression()->value()->getText();
+    if (w_e->operator_()->getText() == "=") {
+    }
+
+    return visitChildren(ctx);     
+}
+
+antlrcpp::Any MyVisitor::visitSelect_table_(SQLParser::Select_table_Context *ctx) {
+    System_manager s_m;
+    s_m.use_database(db_now);
+
+    string table_name = ctx->select_table()->identifiers()->getText();
+    int tableID = s_m.get_table_ID(-1, table_name);
+    if (ctx->select_table()->selectors()->getText() == "*" && ctx->select_table()->where_and_clause() == nullptr) {
+        Record_manager r_m;
+        r_m.openFile(db_now, tableID);
+        r_m.select_all(db_now, tableID);
+        r_m.closeFile();
+    } else {
+        SQLParser::Where_operator_expressionContext* w_e = dynamic_cast<SQLParser::Where_operator_expressionContext*>(ctx->select_table()->where_and_clause()->where_clause()[0]);
+        string table_name1 = w_e->column()->Identifier()[0]->getText();
+        int table_ID1 = s_m.get_table_ID(-1, table_name1);
+        if (w_e != nullptr) {
+            if (w_e->operator_()->getText() == "=") {
+                string colunm1 = w_e->column()->Identifier()[1]->getText();
+                SQLParser::ValueContext* v_c = dynamic_cast<SQLParser::ValueContext *>(w_e->expression()->value());
+                if (v_c != nullptr) {
+                    Record_manager r_m1;
+                    r_m1.openFile(db_now, table_ID1);
+                    if (v_c->Integer() != nullptr) {
+                        int num = atoi(v_c->getText().c_str());
+                        vector<Index> i_v = s_m.get_index_vector(table_ID1);
+                        bool is_index = false;
+                        for (int i = 0; i < i_v.size(); i++) {
+                            string i_name = i_v[i].name;
+                            if (i_name == colunm1) {
+                                is_index = true;
+                                break;
+                            }
+                        }
+                        if (is_index == true) {
+                            IndexHandler i_m;
+                            i_m.OpenIndex(db_now, table_ID1, colunm1);
+                            int rid = i_m.Seainth(num, num+1);
+
+                            char output[1024];
+                            if(r_m1.getRecord(rid + sizeof(Record_Header), output) == LIVE) {
+                                vector<Property> pro_v = s_m.get_property_vector(table_ID1);
+                                int offset = 0;
+                                for (int i = 0; i < pro_v.size(); i++) {
+                                    string pro_name = pro_v[i].name;
+                                    if (pro_v[i].type == 0) {
+                                        int* target = (int *)&output[offset];
+                                        cout << pro_name << " = " << *target << " ";
+                                        offset += sizeof(int);                                    
+                                    }
+                                    else if (pro_v[i].type == 1) {
+                                        int size = pro_v[i].len;
+                                        char target[size];
+                                        memcpy(target, &output[offset], size);
+                                        string s_target = target;
+                                        cout << pro_name << " = " << s_target << " ";
+                                        offset += size;
+                                    }
+                                    else if (pro_v[i].type == 2) {
+                                        float* target = (float *)&output[offset];
+                                        cout << pro_name << " = " << *target << " ";
+                                        offset += sizeof(float);
+                                    }                                
+                                }
+                                cout << endl;
+                            }
+                        } else {
+                            r_m1.select_equa(db_now, table_ID1, num, colunm1);
+                        }
+                    }
+                    else if (v_c->String() != nullptr) {
+                        r_m1.select_equa(db_now, table_ID1, v_c->getText(), colunm1);                        
+                    }                    
+                    else if (v_c->Float() != nullptr) {
+                        float num = (float)atof(v_c->getText().c_str());
+                        r_m1.select_equa(db_now, table_ID1, num, colunm1);                        
+                    }
+                    r_m1.closeFile();
+                }
+            }
+        }
+    }
+
+    return visitChildren(ctx);
 }

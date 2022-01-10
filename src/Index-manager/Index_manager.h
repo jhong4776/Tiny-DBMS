@@ -10,6 +10,7 @@ class IndexHandler {
         IndexHandler();
         ~IndexHandler();
         RC CreateIndex (string database_name, string table_name, std::string index_name); // 创建索引
+        RC CreateIndex (string database_name, int tableID, std::string index_name); // 创建索引
         RC DestroyIndex (string database_name, string table_name, std::string index_name); // 删除索引
         RC OpenIndex (string database_name, int table_ID, std::string index_name);
         RC OpenIndex (string database_name, string table_name, std::string index_name); // 通过缓存管理模块打开索引，并获得其句柄

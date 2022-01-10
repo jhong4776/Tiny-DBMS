@@ -9,6 +9,8 @@
 #define INDEX_PAGE 1
 #define ROOT_PAGEID 0
 #define MAX_RECORD 1024
+#define MARK 0
+#define UPDATE 1
 
 // extern std::string pro_types[5] = {"int", "char", "float", "double", "bool"};
 

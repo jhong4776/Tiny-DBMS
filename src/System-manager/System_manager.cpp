@@ -113,7 +113,7 @@ void System_manager::use_database(std::string name) {
     }
 }
 
-void System_manager::create_table(std::string name, Table_Header table_header, std::list<Property> property, std::list<PriKey> prikey, std::list<ForKey> forkey) {
+bool System_manager::create_table(std::string name, Table_Header table_header, std::list<Property> property, std::list<PriKey> prikey, std::list<ForKey> forkey) {
     std::cout << "create table " << name << std::endl;
 
     // 打开数据库文件
@@ -121,7 +121,7 @@ void System_manager::create_table(std::string name, Table_Header table_header, s
     int new_fileID = 0;
     f_manager->openFile(database_now.data(), new_fileID); 
     BufType table_buf = b_manager->getPage(new_fileID, 0, bufID_now);    
-
+    cout << "table" << endl;
     // 解析数据库文件头
     DBHeader* new_header = (DBHeader*)table_buf;
     int table_num = new_header->size;
@@ -134,10 +134,9 @@ void System_manager::create_table(std::string name, Table_Header table_header, s
 
         if (name == str_table_name) {
             std::cout << "Can't create table " << name << " table exists" << std::endl;
-            return;
+            return false;
         }
     }
-    std::cout << "1\n";
     // 更新数据库文件头&插入新的表项
     TableList newtable;
     for (int i = 0; i < 20; i++) {
@@ -145,14 +144,13 @@ void System_manager::create_table(std::string name, Table_Header table_header, s
     }
     name.copy(newtable.table_name, 19, 0);
     newtable.table_index = new_header->newID;
-
+    
     DBHeader newDBHeader;
     newDBHeader.newID = new_header->newID + 1;
     newDBHeader.size = new_header->size + 1;
     
     memcpy(table_buf, &newDBHeader, sizeof(DBHeader));
     memcpy(&table_buf[sizeof(DBHeader) + sizeof(TableList)*table_num], (uint8_t *)&newtable, sizeof(TableList));
-    std::cout << "2\n";
     // 在数据库页式文件中创建新的数据表页，页编号即为表编号
     int table_bufID = 0;
     BufType c_table_buf = b_manager->getPage(new_fileID, newtable.table_index, table_bufID);
@@ -174,7 +172,7 @@ void System_manager::create_table(std::string name, Table_Header table_header, s
             b_manager->release(table_bufID);
             b_manager->release(bufID_now);
             f_manager->closeFile(new_fileID);      
-            return;      
+            return false;      
         }
         bool pri_id_exit = insert_foreign_key((*it).name, newtable.table_index, (*it).prename, (*it).pretable);
         if (pri_id_exit == false) {
@@ -182,7 +180,7 @@ void System_manager::create_table(std::string name, Table_Header table_header, s
             b_manager->release(table_bufID);
             b_manager->release(bufID_now);
             f_manager->closeFile(new_fileID);      
-            return;            
+            return false;            
         }
         memcpy(&c_table_buf[sizeof(Table_Header) + sizeof(Property) * property.size() + sizeof(PriKey) * prikey.size() + sizeof(ForKey) * off], &(*it), sizeof(ForKey));
         off++;        
@@ -193,6 +191,7 @@ void System_manager::create_table(std::string name, Table_Header table_header, s
     b_manager->writeBack(table_bufID);
     b_manager->writeBack(bufID_now);
     f_manager->closeFile(new_fileID);
+    return true;
 }
 
 void System_manager::drop_table(std::string name) {
@@ -566,7 +565,7 @@ void System_manager::add_prikey(std::string table_name, std::string prikey) {
     f_manager->closeFile(new_fileID);
 }
 
-void System_manager::drop_prikey(std::string table_name, std::string prikey) {
+bool System_manager::drop_prikey(std::string table_name, std::string prikey) {
     int new_fileID = 0;
     int new_bufID = 0;
     f_manager->openFile(database_now.data(), new_fileID);
@@ -574,7 +573,7 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
     if (pageID == -1) {
         std::cout << "Error : table " << table_name << " doesn't exit!" << std::endl;
         f_manager->closeFile(new_fileID);
-        return;
+        return false;
     }
     BufType table_buf = b_manager->getPage(new_fileID, pageID, new_bufID);
 
@@ -600,7 +599,7 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
                 std::cout << ori_name << " is not a primary key!" << std::endl;
                 b_manager->release(new_bufID);
                 f_manager->closeFile(new_fileID);
-                return;
+                return false;
             }
             pro->prikey = false;
             memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * i], pro, sizeof(Property));
@@ -612,7 +611,7 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
         std::cout << "Error : " << prikey << " doesn't in table!" << std::endl;
         b_manager->release(new_bufID);
         f_manager->closeFile(new_fileID);
-        return;
+        return false;
     }
 
     // 获取原主键和外键
@@ -627,7 +626,7 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
                 std::cout << "Error : constraint by foreign key" << std::endl;
                 b_manager->release(new_bufID);
                 f_manager->closeFile(new_fileID);
-                return;
+                return false;
             }
         } else {
             pri_list.push_back(*pri);
@@ -664,6 +663,7 @@ void System_manager::drop_prikey(std::string table_name, std::string prikey) {
     b_manager->writeBack(new_bufID);
 
     f_manager->closeFile(new_fileID);
+    return true;
 }
 
 void System_manager::add_foreignkey(std::string table_name, std::string forkey, std::string r_table, std::string prikey) {
@@ -847,7 +847,7 @@ std::string System_manager::get_database_now() {
     return database_now;
 }
 
-void System_manager::add_index(std::string table_name, std::string index_name) {
+bool System_manager::add_index(std::string table_name, std::string index_name) {
     int new_fileID = 0;
     int new_bufID = 0;
     f_manager->openFile(database_now.data(), new_fileID);
@@ -855,13 +855,14 @@ void System_manager::add_index(std::string table_name, std::string index_name) {
     if (pageID == -1) {
         std::cout << "Error : table " << table_name << "doesn't exit!" << std::endl;
         f_manager->closeFile(new_fileID);
-        return;
+        return false;
     }
 
     BufType table_buf = b_manager->getPage(new_fileID, pageID, new_bufID);    
     Table_Header* t_h = (Table_Header *)table_buf;
     Table_Header new_table_header;
-
+    
+    cout << "t_h->pro_num = " << t_h->pro_num << endl;
     new_table_header.pro_num = t_h->pro_num; 
     new_table_header.prikey_num = t_h->prikey_num; 
     new_table_header.forkey_num = t_h->forkey_num;
@@ -883,7 +884,7 @@ void System_manager::add_index(std::string table_name, std::string index_name) {
         std::cout << "Error : " << index_name << " doesn't in table!" << std::endl;
         b_manager->release(new_bufID);
         f_manager->closeFile(new_fileID);
-        return;        
+        return false;        
     }
 
     // 直接写入Index
@@ -892,9 +893,11 @@ void System_manager::add_index(std::string table_name, std::string index_name) {
         new_index.name[i] = 0;
     index_name.copy(new_index.name, 20, 0);
     memcpy(&table_buf[sizeof(Table_Header) + sizeof(Property) * t_h->pro_num + sizeof(PriKey) * t_h->prikey_num + sizeof(ForKey) * t_h->forkey_num + sizeof(Index) * (t_h->index_num - 1)], &new_index, sizeof(Index));
+    cout << "new_table_header.index_num = " << new_table_header.index_num << endl;
     b_manager->markDirty(new_bufID);
     b_manager->writeBack(new_bufID);
     f_manager->closeFile(new_fileID);
+    return true;
 }
 
 void System_manager::drop_index(std::string table_name, std::string index_name) {

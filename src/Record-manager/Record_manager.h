@@ -32,6 +32,15 @@ public:
     bool find_record(int pageID, int offset, int num);
     bool find_record(int pageID, int offset, float num);
     bool find_record(int pageID, int offset, std::string name, int size);
+    void mark_record(int pageID, int offset, int num);
+    void mark_record(int pageID, int offset, float num);
+    void mark_record(int pageID, int offset, std::string name, int size);  
+    void select_all(std::string database_name, int tableID);
+    void select_equa(std::string database_name, int tableID, int num, std::string colunm);
+    void select_equa(std::string database_name, int tableID, std::string num, std::string colunm);
+    void select_equa(std::string database_name, int tableID, float num, std::string colunm);
+    bool check_dup(int pageID, int offset, int type, int len, std::string colunm);
+    int get_tag(int rid);
     Record_Header* get_header(std::string database_name, int tableID);
 };
 

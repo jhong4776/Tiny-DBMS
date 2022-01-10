@@ -20,6 +20,13 @@ RC IndexHandler::CreateIndex(string database_name, string table_name, string Ind
     return 0;
 }
 
+RC IndexHandler::CreateIndex(string database_name, int tableID, string Index_name) {
+    System_manager s_m;
+    s_m.use_database(database_name);
+    btree.create_new_tree(tableID, database_name, Index_name);
+    return 0;
+}
+
 RC IndexHandler::DestroyIndex(string database_name, string table_name, string Index_name) {
     return 0;
 }
@@ -56,7 +63,12 @@ RC IndexHandler::DeleteRecord(int lowerBound, int upperBound) {
 }
 
 RC IndexHandler::InsertRecoder(int key, const int &rid) {
-    btree.insert_record(key, rid);
+    int old_rid = Seainth(key, key+1);
+    if (old_rid != -1) {
+        UpdateRecoder(key, old_rid, key, rid);
+    } else {
+        btree.insert_record(key, rid);
+    }
     return 0;
 }
 

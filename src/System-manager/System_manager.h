@@ -45,7 +45,7 @@ public:
     void create_database(std::string name);
     void drop_database(std::string name);
     void use_database(std::string name);
-    void create_table(std::string name, Table_Header table_header, std::list<Property> property, std::list<PriKey> prikey, std::list<ForKey> forkey);
+    bool create_table(std::string name, Table_Header table_header, std::list<Property> property, std::list<PriKey> prikey, std::list<ForKey> forkey);
     void drop_table(std::string name);
     void rename_table(std::string oldname, std::string newname);
     std::list<std::string>* show_table();
@@ -54,10 +54,10 @@ public:
     int get_table_ID(int fID, std::string table_name);
     std::string get_table_name(int fID, int pageID);
     void add_prikey(std::string table_name, std::string prikey);
-    void drop_prikey(std::string table_name, std::string prikey);
+    bool drop_prikey(std::string table_name, std::string prikey);
     void add_foreignkey(std::string table_name, std::string forkey, std::string r_table, std::string prikey);
     void drop_foreignkey(std::string table_name, std::string forkey);
-    void add_index(std::string table_name, std::string index_name);
+    bool add_index(std::string table_name, std::string index_name);
     void drop_index(std::string table_name, std::string index_name);
     void update_pagenum(int tableID);
     int get_recordLen(int tableID);
