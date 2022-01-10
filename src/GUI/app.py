@@ -2,6 +2,8 @@ from tkinter import *
 from tkinter import messagebox, simpledialog
 from tkinter.ttk import *
 import subprocess
+import threading
+import os 
 
 class Application(Frame):
     def __init__(self, master=None):
@@ -60,14 +62,21 @@ def create_frame1(p=None):
     # sql = simpledialog.askstring("查找", "请输入SQL语句")
     root1.mainloop()
 
+def rrun(ojj:subprocess.Popen):
+    while True:
+        fet_t = ojj.stdout.readline().decode("GBK")
+        fet_t = ojj.stdout.readline().decode("GBK")
+        if fet_t and fet_t != "mysql> ":
+            messagebox.showinfo("Result", fet_t,parent=root1)
 
 def frame1_button1():
-    global root1
+    global root1,pi
     sql = simpledialog.askstring("查找", "请输入SQL语句", parent = root1)
     # 调用main.exe 以sql作为参数
-    result = pi.communicate(input=sql)
-    # 得到返回值，然后输出
-    messagebox.showinfo("Result", result,parent=root1)
+    print("sss")
+    pi.stdin.write(bytes("{}\n".format(sql).encode("GBK")))
+    pi.stdin.flush()
+
 
 def return_to_main_frame():
     root1.destroy()
@@ -89,7 +98,9 @@ def main_frame():
 
 if __name__ == "__main__":
     order = rf"../final/main.exe"
-    pi= subprocess.Popen(order,shell=True,stdout=subprocess.PIPE)
+    pi= subprocess.Popen(order,shell=True, stdin=subprocess.PIPE,stdout=subprocess.PIPE)
+    rt= threading.Thread(target=rrun,args=(pi,))
+    rt.start()
     main_frame()
 
 
